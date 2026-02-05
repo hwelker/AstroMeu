@@ -4,6 +4,16 @@
 
 AstroMeu is a personalized astrological guidance web application built for Brazilian Portuguese-speaking users. The platform offers daily astrological audio messages, AI-powered chat conversations with an astrologer persona named "Luna", zodiac sign calculations, and subscription-based plan management. Users register with their birth data to receive tailored astrological content.
 
+## Recent Changes (February 2026)
+
+- **Mapa Astral**: Added natal chart display with sun, moon, ascendant signs, element badge, and planetary positions (mock data)
+- **Horóscopo do Dia**: Daily horoscope with general/love/career predictions, lucky numbers, intensity meter, and mood badges
+- **Radar do Coração**: Partner compatibility module with 0-100 score, 7-day forecast, and daily relationship alerts (Premium: Conexão+)
+- **Diário das Estrelas**: Emotional diary with mood tracking, AI responses, pattern detection (Premium: Plenitude only)
+- **Dashboard Navigation**: Restructured with 7 tabs (Chat, Horóscopo, Mapa, Radar, Diário, Perfil, Planos)
+- **Plan-based Gating**: Lock/unlock features based on subscription with upgrade prompts
+- **Design Polish**: Updated primary color to exact #6366F1 indigo, border-radius to 20px spec
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
