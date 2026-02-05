@@ -1,0 +1,752 @@
+# 🎯 PROMPT PARA O REPLIT - IMPLEMENTAÇÃO COMPLETA
+
+Cole este prompt no Replit para implementar TODAS as funcionalidades que faltam:
+
+---
+
+Você precisa implementar funcionalidades CRÍTICAS que estão faltando no app AstroMeu. Vou ser EXTREMAMENTE específico sobre o que fazer.
+
+## 🚨 CONTEXTO IMPORTANTE:
+
+O app tem **3 PLANOS** diferentes e as funcionalidades devem ser **BLOQUEADAS/DESBLOQUEADAS** baseado no plano do usuário:
+
+**PLANO ESSÊNCIA (R$ 29,90):**
+- 3 perguntas por dia
+- Acesso: Chat + Perfil
+- BLOQUEADO: Radar do Coração, Diário das Estrelas
+
+**PLANO CONEXÃO (R$ 39,90):**
+- 10 perguntas por dia
+- Acesso: Chat + Radar do Coração + Perfil
+- DESBLOQUEADO: Radar do Coração
+- BLOQUEADO: Diário das Estrelas
+
+**PLANO PLENITUDE (R$ 59,90):**
+- 10 perguntas por dia (NÃO é ilimitado!)
+- Acesso: Chat + Radar do Coração + Diário das Estrelas + Perfil
+- TUDO DESBLOQUEADO
+
+---
+
+## 📋 TAREFAS A IMPLEMENTAR:
+
+### **TAREFA 1: Criar Bottom Navigation Dinâmica**
+
+A bottom navigation DEVE mudar baseado no plano do usuário. 
+
+**Criar arquivo:** `client/src/components/BottomNav.tsx`
+
+```typescript
+import { Home, Heart, BookOpen, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PlanType } from "@shared/schema";
+
+interface BottomNavProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  plan: PlanType;
+}
+
+export function BottomNav({ activeTab, onTabChange, plan }: BottomNavProps) {
+  // Essência: apenas chat e perfil
+  if (plan === "essencia") {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex md:hidden">
+        <Button /* ... chat ... */ />
+        <Button /* ... perfil ... */ />
+      </nav>
+    );
+  }
+
+  // Conexão: chat, coração, perfil
+  if (plan === "conexao") {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex md:hidden">
+        <Button /* ... chat ... */ />
+        <Button /* ... coração ... */ />
+        <Button /* ... perfil ... */ />
+      </nav>
+    );
+  }
+
+  // Plenitude: tudo
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex md:hidden">
+      <Button /* ... chat ... */ />
+      <Button /* ... coração ... */ />
+      <Button /* ... diário ... */ />
+      <Button /* ... perfil ... */ />
+    </nav>
+  );
+}
+```
+
+**IMPORTANTE:**
+- Use ícones: `Home` (chat), `Heart` (coração), `BookOpen` (diário), `User` (perfil)
+- Ativo: cor indigo (#6366F1), inativo: cinza (#6B7280)
+- Width: cada botão deve ter flex-1
+
+---
+
+### **TAREFA 2: Criar Componente de Upgrade (Tela Bloqueada)**
+
+**Criar arquivo:** `client/src/components/UpgradeCard.tsx`
+
+```typescript
+import { Lock, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+interface UpgradeCardProps {
+  featureName: string;
+  requiredPlan: "conexao" | "plenitude";
+  benefits: string[];
+  onUpgrade: () => void;
+}
+
+export function UpgradeCard({ featureName, requiredPlan, benefits, onUpgrade }: UpgradeCardProps) {
+  const planName = requiredPlan === "conexao" ? "Conexão" : "Plenitude";
+  const planPrice = requiredPlan === "conexao" ? "R$ 39,90" : "R$ 59,90";
+
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] p-6">
+      <Card className="max-w-md w-full border-2 border-indigo-100">
+        <CardHeader className="text-center">
+          <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
+            <Lock className="h-8 w-8 text-indigo-500" />
+          </div>
+          <h3 className="text-xl font-medium mb-2">{featureName}</h3>
+          <p className="text-muted-foreground text-sm">
+            Esta funcionalidade está disponível no Plano {planName}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg">
+            <p className="text-sm font-medium mb-2">O que você vai desbloquear:</p>
+            <ul className="space-y-2">
+              {benefits.map((benefit, i) => (
+                <li key={i} className="text-sm flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          <div className="text-center py-2">
+            <p className="text-2xl font-semibold text-indigo-600">{planPrice}<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
+          </div>
+
+          <Button 
+            className="w-full" 
+            size="lg"
+            onClick={onUpgrade}
+          >
+            Fazer Upgrade para {planName}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
+---
+
+### **TAREFA 3: Criar Página "Radar do Coração"**
+
+**Criar arquivo:** `client/src/pages/heart-radar.tsx`
+
+Esta página tem **2 ESTADOS:**
+
+**ESTADO 1:** Se usuário NÃO tem parceiro cadastrado → Mostrar formulário
+**ESTADO 2:** Se usuário TEM parceiro cadastrado → Mostrar análise
+
+```typescript
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Heart, TrendingUp, MessageCircle, Target, Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+
+export default function HeartRadar() {
+  const userId = localStorage.getItem("userId");
+  
+  // Query para buscar dados do parceiro
+  const { data: partner } = useQuery({
+    queryKey: ["/api/users", userId, "partner"],
+  });
+
+  // Se não tem parceiro, mostrar formulário
+  if (!partner) {
+    return <PartnerForm />;
+  }
+
+  // Se tem parceiro, mostrar análise
+  return <CompatibilityAnalysis partner={partner} />;
+}
+
+// COMPONENTE 1: Formulário de cadastro
+function PartnerForm() {
+  return (
+    <div className="p-6 max-w-2xl mx-auto">
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-indigo-500 flex items-center justify-center mx-auto mb-4">
+          <Heart className="h-8 w-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-medium mb-2">Radar do Coração</h1>
+        <p className="text-muted-foreground">
+          Cadastre seu parceiro para análise de compatibilidade
+        </p>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div>
+            <Label>Nome do parceiro</Label>
+            <Input placeholder="Nome completo" />
+          </div>
+          <div>
+            <Label>Data de nascimento</Label>
+            <Input type="date" />
+          </div>
+          <div>
+            <Label>Hora de nascimento (opcional)</Label>
+            <Input type="time" />
+          </div>
+          <div>
+            <Label>Cidade de nascimento</Label>
+            <Input placeholder="São Paulo, SP" />
+          </div>
+          <Button className="w-full" size="lg">
+            Calcular Compatibilidade
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// COMPONENTE 2: Análise de compatibilidade
+function CompatibilityAnalysis({ partner }: { partner: any }) {
+  // DADOS MOCKADOS (depois virão do backend)
+  const mockData = {
+    overallScore: 85,
+    breakdown: {
+      communication: 90,
+      intimacy: 82,
+      conflicts: 75,
+      goals: 88
+    },
+    forecast: [
+      { 
+        day: "Hoje", 
+        climate: "sunny", 
+        description: "Dia perfeito para conversas profundas sobre o futuro",
+        favorableTopics: ["planos futuros", "intimidade"],
+        avoidTopics: ["dinheiro", "família"]
+      },
+      { 
+        day: "Amanhã", 
+        climate: "cloudy", 
+        description: "Evite discussões sobre finanças",
+        favorableTopics: ["lazer", "diversão"],
+        avoidTopics: ["trabalho", "responsabilidades"]
+      },
+      { 
+        day: "Sexta-feira", 
+        climate: "sunny", 
+        description: "Ótimo momento para romance",
+        favorableTopics: ["amor", "carinho"],
+        avoidTopics: ["críticas"]
+      },
+      // ... adicione mais 4 dias
+    ]
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-medium mb-2">Radar do Coração</h1>
+        <p className="text-muted-foreground">Análise de compatibilidade com {partner.name}</p>
+      </div>
+
+      {/* Card de Score Geral */}
+      <Card className="border-2 border-indigo-100">
+        <CardContent className="pt-6">
+          <div className="text-center mb-6">
+            <div className="text-6xl font-bold text-indigo-600 mb-2">
+              {mockData.overallScore}%
+            </div>
+            <p className="text-muted-foreground">Compatibilidade Geral</p>
+          </div>
+          <Progress value={mockData.overallScore} className="h-3" />
+        </CardContent>
+      </Card>
+
+      {/* Breakdown por categoria */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-indigo-500" />
+              Comunicação
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold mb-2">{mockData.breakdown.communication}%</div>
+            <Progress value={mockData.breakdown.communication} className="h-2" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Heart className="h-5 w-5 text-pink-500" />
+              Intimidade
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold mb-2">{mockData.breakdown.intimacy}%</div>
+            <Progress value={mockData.breakdown.intimacy} className="h-2" />
+          </CardContent>
+        </Card>
+
+        {/* Repita para conflicts e goals */}
+      </div>
+
+      {/* Previsão 7 dias */}
+      <div>
+        <h2 className="text-xl font-medium mb-4">Previsão dos próximos 7 dias</h2>
+        <div className="space-y-3">
+          {mockData.forecast.map((day, i) => (
+            <Card key={i}>
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    {/* Ícone baseado em day.climate */}
+                    <Heart className="h-6 w-6 text-indigo-500" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium">{day.day}</h3>
+                      <Badge variant="secondary">{day.climate === "sunny" ? "☀️ Favorável" : "☁️ Atenção"}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">{day.description}</p>
+                    <div className="flex gap-4 text-xs">
+                      <div>
+                        <span className="text-green-600">✓ Falar sobre:</span> {day.favorableTopics.join(", ")}
+                      </div>
+                      <div>
+                        <span className="text-red-600">✗ Evitar:</span> {day.avoidTopics.join(", ")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+### **TAREFA 4: Criar Página "Diário das Estrelas"**
+
+**Criar arquivo:** `client/src/pages/star-diary.tsx`
+
+Esta página tem **3 ESTADOS:**
+
+**ESTADO 1:** Lista de entradas anteriores
+**ESTADO 2:** Formulário de nova entrada
+**ESTADO 3:** Resposta da IA após envio
+
+```typescript
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { BookOpen, Plus, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
+type ViewMode = "list" | "new" | "response";
+
+export default function StarDiary() {
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [entryText, setEntryText] = useState("");
+  const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
+
+  const userId = localStorage.getItem("userId");
+
+  // Query para buscar entradas
+  const { data: entries = [] } = useQuery({
+    queryKey: ["/api/users", userId, "diary"],
+  });
+
+  // Dados mockados
+  const entriesThisMonth = 2;
+  const maxEntries = 10;
+  const remainingEntries = maxEntries - entriesThisMonth;
+
+  const moods = [
+    { id: "ansiosa", label: "😰 Ansiosa" },
+    { id: "feliz", label: "😊 Feliz" },
+    { id: "confusa", label: "😕 Confusa" },
+    { id: "triste", label: "😢 Triste" },
+    { id: "com_raiva", label: "😠 Com raiva" },
+    { id: "apaixonada", label: "😍 Apaixonada" },
+  ];
+
+  if (viewMode === "new") {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <Button 
+          variant="ghost" 
+          className="mb-4"
+          onClick={() => setViewMode("list")}
+        >
+          ← Voltar
+        </Button>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-indigo-500" />
+              Nova Entrada no Diário
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Como você está se sentindo?</Label>
+              <Textarea 
+                placeholder="Escreva livremente sobre seus sentimentos, pensamentos e experiências..."
+                rows={8}
+                value={entryText}
+                onChange={(e) => setEntryText(e.target.value)}
+                maxLength={900}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {entryText.length}/900 caracteres (máx. 300 palavras)
+              </p>
+            </div>
+
+            <div>
+              <Label className="mb-3 block">Marque como você está se sentindo:</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {moods.map((mood) => (
+                  <Label 
+                    key={mood.id}
+                    className="flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50"
+                  >
+                    <Checkbox 
+                      checked={selectedMoods.includes(mood.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedMoods([...selectedMoods, mood.id]);
+                        } else {
+                          setSelectedMoods(selectedMoods.filter(m => m !== mood.id));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{mood.label}</span>
+                  </Label>
+                ))}
+              </div>
+            </div>
+
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={() => setViewMode("response")}
+              disabled={entryText.length < 10}
+            >
+              Enviar ao Universo
+              <Sparkles className="h-4 w-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (viewMode === "response") {
+    // RESPOSTA MOCKADA
+    const mockResponse = {
+      aiResponse: `Querida, percebo que você está passando por um momento intenso de transformação. 
+      
+      Seus sentimentos de ansiedade são compreensíveis - Mercúrio retrógrado no seu signo está trazendo à tona questões que precisavam ser olhadas. É um convite do universo para você desacelerar e ouvir sua intuição.
+      
+      Lembre-se: cada fase difícil é também uma oportunidade de crescimento. As estrelas indicam que este período de confusão vai passar em breve, trazendo mais clareza para suas decisões.
+      
+      Continue confiando no processo. Você está exatamente onde precisa estar. 💜✨`,
+      patternsDetected: [
+        "Você mencionou ansiedade nas últimas 3 entradas",
+        "Tema recorrente: preocupações sobre o futuro",
+        "Ciclo lunar: você tende a se sentir mais emotiva na lua cheia"
+      ]
+    };
+
+    return (
+      <div className="p-6 max-w-3xl mx-auto space-y-6">
+        <Button 
+          variant="ghost"
+          onClick={() => setViewMode("list")}
+        >
+          ← Voltar para o diário
+        </Button>
+
+        <Card className="border-2 border-indigo-100">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-indigo-500" />
+              Mensagem das Estrelas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg">
+              <p className="text-sm font-medium mb-2">Sua entrada:</p>
+              <p className="text-sm text-muted-foreground italic">"{entryText.substring(0, 100)}..."</p>
+            </div>
+
+            <div className="prose prose-sm max-w-none">
+              {mockResponse.aiResponse.split('\n\n').map((paragraph, i) => (
+                <p key={i} className="mb-3">{paragraph}</p>
+              ))}
+            </div>
+
+            {mockResponse.patternsDetected.length > 0 && (
+              <div className="bg-purple-50 dark:bg-purple-950/30 p-4 rounded-lg">
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  📊 Padrões Detectados
+                </p>
+                <ul className="space-y-1">
+                  {mockResponse.patternsDetected.map((pattern, i) => (
+                    <li key={i} className="text-sm text-muted-foreground">• {pattern}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ESTADO PADRÃO: Lista de entradas
+  return (
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-medium mb-2">Diário das Estrelas</h1>
+          <p className="text-muted-foreground">Registre seus sentimentos e receba orientação astrológica</p>
+        </div>
+        <Badge variant="secondary" className="text-sm">
+          {remainingEntries}/{maxEntries} entradas restantes
+        </Badge>
+      </div>
+
+      <Button 
+        className="w-full md:w-auto" 
+        size="lg"
+        onClick={() => setViewMode("new")}
+        disabled={remainingEntries === 0}
+      >
+        <Plus className="h-5 w-5 mr-2" />
+        Nova Entrada
+      </Button>
+
+      {entries.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="font-medium mb-2">Seu diário está vazio</h3>
+            <p className="text-sm text-muted-foreground">
+              Comece registrando seus sentimentos e receba orientação astrológica personalizada
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {/* Renderizar lista de entradas mockadas */}
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="cursor-pointer hover:bg-muted/50">
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Há 2 dias</p>
+                    <div className="flex gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">😰 Ansiosa</Badge>
+                      <Badge variant="secondary" className="text-xs">😕 Confusa</Badge>
+                    </div>
+                  </div>
+                  <Sparkles className="h-4 w-4 text-indigo-500" />
+                </div>
+                <p className="text-sm line-clamp-2">
+                  Hoje acordei pensando muito sobre o futuro e me sentindo ansiosa...
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+### **TAREFA 5: Atualizar Dashboard com Sistema de Tabs Dinâmico**
+
+**Modificar arquivo:** `client/src/pages/dashboard.tsx`
+
+**MUDANÇAS NECESSÁRIAS:**
+
+1. **Adicionar novas tabs:**
+```typescript
+type TabType = "chat" | "heart" | "diary" | "profile" | "plans";
+```
+
+2. **Adicionar renderização condicional das tabs:**
+```typescript
+{activeTab === "heart" && (
+  user.plan === "essencia" ? (
+    <UpgradeCard 
+      featureName="Radar do Coração"
+      requiredPlan="conexao"
+      benefits={[
+        "Análise de compatibilidade astrológica",
+        "Previsão de clima do relacionamento",
+        "Score dinâmico de compatibilidade",
+        "Orientações diárias para o casal"
+      ]}
+      onUpgrade={() => setActiveTab("plans")}
+    />
+  ) : (
+    <HeartRadar />
+  )
+)}
+
+{activeTab === "diary" && (
+  user.plan === "plenitude" ? (
+    <StarDiary />
+  ) : (
+    <UpgradeCard 
+      featureName="Diário das Estrelas"
+      requiredPlan="plenitude"
+      benefits={[
+        "10 entradas por mês com IA",
+        "Detecção de padrões emocionais",
+        "Análise astrológica profunda",
+        "Relatório mensal em PDF"
+      ]}
+      onUpgrade={() => setActiveTab("plans")}
+    />
+  )
+)}
+```
+
+3. **Substituir bottom navigation pela dinâmica:**
+```typescript
+<BottomNav 
+  activeTab={activeTab}
+  onTabChange={setActiveTab}
+  plan={user.plan as PlanType}
+/>
+```
+
+4. **Atualizar sidebar também:**
+No componente `SidebarContent`, adicionar renderização condicional dos botões baseado no plano.
+
+---
+
+### **TAREFA 6: Atualizar App.tsx com Novas Rotas**
+
+**Modificar arquivo:** `client/src/App.tsx`
+
+```typescript
+import HeartRadar from "@/pages/heart-radar";
+import StarDiary from "@/pages/star-diary";
+
+// ... dentro do Router:
+<Route path="/heart-radar" component={HeartRadar} />
+<Route path="/star-diary" component={StarDiary} />
+```
+
+---
+
+### **TAREFA 7: Corrigir Limite de Perguntas do Plano Plenitude**
+
+**Modificar arquivo:** `shared/schema.ts`
+
+Linha 131, mudar de:
+```typescript
+plenitude: { questionsPerDay: 999, audioDuration: "até 3 min" },
+```
+
+Para:
+```typescript
+plenitude: { questionsPerDay: 10, audioDuration: "até 3 min" },
+```
+
+---
+
+## ✅ CHECKLIST DE VALIDAÇÃO:
+
+Após implementar, teste o seguinte:
+
+**Se usuário no Plano Essência:**
+- [ ] Vejo apenas 2 ícones na bottom nav
+- [ ] Se clicar em qualquer funcionalidade premium, vejo tela de upgrade
+- [ ] Badge de perguntas mostra "X/3 perguntas"
+
+**Se usuário no Plano Conexão:**
+- [ ] Vejo 3 ícones na bottom nav (Home, Coração, Perfil)
+- [ ] Radar do Coração funciona completamente
+- [ ] Se clicar em Diário, vejo tela de upgrade
+- [ ] Badge de perguntas mostra "X/10 perguntas"
+
+**Se usuário no Plano Plenitude:**
+- [ ] Vejo 4 ícones na bottom nav
+- [ ] Radar do Coração funciona
+- [ ] Diário das Estrelas funciona
+- [ ] Badge de perguntas mostra "X/10 perguntas"
+
+---
+
+## 🎨 DESIGN REQUIREMENTS:
+
+**Lembre-se:**
+- Background BRANCO predominante
+- Indigo (#6366F1) apenas em destaques
+- Bordas finas (1px)
+- Border-radius: 20px em cards
+- Muito espaço em branco
+- Ícones outline com stroke 1.5px
+- Tipografia delicada (Inter ou Outfit)
+
+---
+
+## 🚨 PONTOS CRÍTICOS:
+
+1. **NUNCA** mostre funcionalidades bloqueadas como se estivessem disponíveis
+2. A bottom navigation **DEVE** mudar baseado no plano
+3. Use `<UpgradeCard />` sempre que usuário tentar acessar funcionalidade bloqueada
+4. Todos os dados podem ser mockados por enquanto
+5. Foque em UI/UX perfeita - backend vem depois
+
+---
+
+Implemente TODAS essas tarefas agora. Não pule nada. Se tiver dúvidas sobre alguma tarefa específica, me pergunte ANTES de implementar.
+

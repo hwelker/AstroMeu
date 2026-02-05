@@ -17,7 +17,9 @@ export const users = pgTable("users", {
   birthCity: text("birth_city").notNull(),
   voicePreference: text("voice_preference").default("feminine"), // masculine or feminine
   notificationTime: text("notification_time").default("08:00"),
-  plan: text("plan").default("essencia").notNull(), // essencia, conexao, plenitude
+  profilePhotoBase64: text("profile_photo_base64"),
+  birthState: text("birth_state"),
+  plan: text("plan").default("plenitude").notNull(), // essencia, conexao, plenitude (plenitude for dev)
   sunSign: text("sun_sign"),
   moonSign: text("moon_sign"),
   ascendantSign: text("ascendant_sign"),
@@ -62,6 +64,8 @@ export const partners = pgTable("partners", {
   birthDate: date("birth_date").notNull(),
   birthTime: text("birth_time"),
   birthCity: text("birth_city").notNull(),
+  birthState: text("birth_state"),
+  photoBase64: text("photo_base64"),
   sunSign: text("sun_sign"),
   compatibilityScore: integer("compatibility_score"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -128,7 +132,7 @@ export type DailyQuestionCount = typeof dailyQuestionCounts.$inferSelect;
 export const planLimits: Record<PlanType, { questionsPerDay: number; audioDuration: string }> = {
   essencia: { questionsPerDay: 3, audioDuration: "1-2 min" },
   conexao: { questionsPerDay: 10, audioDuration: "até 3 min" },
-  plenitude: { questionsPerDay: 999, audioDuration: "até 3 min" }, // unlimited
+  plenitude: { questionsPerDay: 10, audioDuration: "até 3 min" },
 };
 
 // Zodiac signs

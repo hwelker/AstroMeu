@@ -5,15 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ZodiacIcon } from "@/components/ZodiacIcon";
 import { getZodiacSign, type ZodiacSign } from "@/lib/zodiac";
-import { Heart, Plus, AlertTriangle, Calendar, MessageCircle, Clock, TrendingUp, Sparkles, Lock } from "lucide-react";
+import { BrazilStateCitySelector } from "@/components/BrazilStateCitySelector";
+import { Heart, Plus, AlertTriangle, Calendar, MessageCircle, Clock, TrendingUp, Sparkles, Lock, Upload } from "lucide-react";
 import type { Partner, PlanType } from "@shared/schema";
 
 interface RadarCoracaoProps {
   userPlan: PlanType;
   partners: Partner[];
-  onAddPartner?: (data: { name: string; birthDate: string; birthCity: string }) => void;
+  onAddPartner?: (data: { name: string; birthDate: string; birthCity: string; birthState?: string; photoBase64?: string }) => void;
 }
 
 interface DayForecast {
@@ -58,16 +60,33 @@ const mockCompatibilityAreas = [
 
 export function RadarCoracao({ userPlan, partners, onAddPartner }: RadarCoracaoProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newPartner, setNewPartner] = useState({ name: "", birthDate: "", birthCity: "" });
+  const [newPartner, setNewPartner] = useState({ name: "", birthDate: "", birthCity: "", birthState: "" });
+  const [partnerPhoto, setPartnerPhoto] = useState<string | null>(null);
 
   const isLocked = userPlan === "essencia";
   const hasPartner = partners.length > 0;
   const activePartner = partners[0];
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) return;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPartnerPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddPartner = () => {
     if (onAddPartner && newPartner.name && newPartner.birthDate && newPartner.birthCity) {
-      onAddPartner(newPartner);
-      setNewPartner({ name: "", birthDate: "", birthCity: "" });
+      onAddPartner({
+        ...newPartner,
+        photoBase64: partnerPhoto || undefined,
+      });
+      setNewPartner({ name: "", birthDate: "", birthCity: "", birthState: "" });
+      setPartnerPhoto(null);
       setAddDialogOpen(false);
     }
   };
@@ -98,8 +117,8 @@ export function RadarCoracao({ userPlan, partners, onAddPartner }: RadarCoracaoP
       <Card className="border shadow-sm" data-testid="card-radar-empty">
         <CardContent className="py-12">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mx-auto mb-4">
-              <Heart className="h-8 w-8 text-pink-500" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-indigo-500 flex items-center justify-center mx-auto mb-4">
+              <Heart className="h-8 w-8 text-white" />
             </div>
             <h3 className="font-medium text-lg mb-2">Radar do Coração</h3>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
@@ -113,11 +132,37 @@ export function RadarCoracao({ userPlan, partners, onAddPartner }: RadarCoracaoP
                   Adicionar Parceiro
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Adicionar Parceiro</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
+                  <div className="flex flex-col items-center mb-2">
+                    <div className="relative group">
+                      <Avatar className="w-24 h-24 border-2 border-pink-100">
+                        {partnerPhoto ? (
+                          <AvatarImage src={partnerPhoto} alt="Foto do parceiro" />
+                        ) : (
+                          <AvatarFallback className="bg-gradient-to-br from-pink-100 to-indigo-100">
+                            <Heart className="h-8 w-8 text-pink-400" />
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity" data-testid="label-partner-photo-upload">
+                        <Upload className="h-6 w-6 text-white" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handlePhotoUpload}
+                          data-testid="input-partner-photo"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">Foto do parceiro</p>
+                    <p className="text-xs text-muted-foreground">(Opcional)</p>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="partner-name">Nome</Label>
                     <Input
@@ -138,18 +183,17 @@ export function RadarCoracao({ userPlan, partners, onAddPartner }: RadarCoracaoP
                       data-testid="input-partner-birth"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="partner-city">Cidade de nascimento</Label>
-                    <Input
-                      id="partner-city"
-                      placeholder="São Paulo, SP"
-                      value={newPartner.birthCity}
-                      onChange={(e) => setNewPartner({ ...newPartner, birthCity: e.target.value })}
-                      data-testid="input-partner-city"
-                    />
-                  </div>
+
+                  <BrazilStateCitySelector
+                    onStateChange={(state) => setNewPartner((prev) => ({ ...prev, birthState: state }))}
+                    onCityChange={(city) => setNewPartner((prev) => ({ ...prev, birthCity: city }))}
+                    selectedState={newPartner.birthState}
+                    selectedCity={newPartner.birthCity}
+                    label="Local de nascimento do parceiro"
+                  />
+
                   <Button className="w-full" onClick={handleAddPartner} data-testid="button-save-partner">
-                    Salvar
+                    Calcular Compatibilidade
                   </Button>
                 </div>
               </DialogContent>
@@ -167,7 +211,7 @@ export function RadarCoracao({ userPlan, partners, onAddPartner }: RadarCoracaoP
     <div className="space-y-6">
       <Card className="border shadow-sm overflow-hidden" data-testid="card-radar-main">
         <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
                 <Heart className="h-7 w-7" />
@@ -220,7 +264,7 @@ export function RadarCoracao({ userPlan, partners, onAddPartner }: RadarCoracaoP
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
             <Badge className={moodColors.bom} data-testid="badge-today-mood">
               Clima: {moodLabels.bom}
             </Badge>

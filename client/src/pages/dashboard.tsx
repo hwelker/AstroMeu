@@ -19,6 +19,7 @@ import { MapaAstral } from "@/components/MapaAstral";
 import { HoroscopoDia } from "@/components/HoroscopoDia";
 import { RadarCoracao } from "@/components/RadarCoracao";
 import { DiarioEstrelas } from "@/components/DiarioEstrelas";
+import { BottomNav } from "@/components/BottomNav";
 import { getZodiacSign, type ZodiacSign } from "@/lib/zodiac";
 import type { User as UserType, ChatMessage as ChatMessageType, DailyAudio, PlanType, Partner, DiaryEntry } from "@shared/schema";
 
@@ -507,7 +508,7 @@ export default function Dashboard() {
 
             {activeTab === "profile" && (
               <ScrollArea className="h-full">
-                <div className="p-6 max-w-2xl mx-auto space-y-6">
+                <div className="p-6 pb-24 md:pb-6 max-w-2xl mx-auto space-y-6">
                   <h2 className="text-xl font-medium" data-testid="text-profile-page-title">Meu Perfil</h2>
                   <ProfileCard
                     name={user.fullName}
@@ -541,6 +542,12 @@ export default function Dashboard() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  <div className="text-center text-xs text-muted-foreground space-x-2 pt-4">
+                    <a href="/terms" className="hover:text-indigo-500" data-testid="link-profile-terms">Termos de Uso</a>
+                    <span>·</span>
+                    <a href="/privacy" className="hover:text-indigo-500" data-testid="link-profile-privacy">Política de Privacidade</a>
+                  </div>
                 </div>
               </ScrollArea>
             )}
@@ -580,6 +587,12 @@ export default function Dashboard() {
           </main>
         </div>
       </div>
+
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={(tab) => handleTabChange(tab as TabType)}
+        plan={userPlan}
+      />
 
       {todayAudio && (
         <AudioPopup

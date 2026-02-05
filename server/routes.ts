@@ -37,6 +37,24 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Login (stub - authentication not fully implemented yet)
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "Email é obrigatório" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ error: "Email não encontrado. Crie uma conta primeiro." });
+      }
+      res.json({ userId: user.id });
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ error: "Erro ao fazer login" });
+    }
+  });
+
   // Create user
   app.post("/api/users", async (req: Request, res: Response) => {
     try {

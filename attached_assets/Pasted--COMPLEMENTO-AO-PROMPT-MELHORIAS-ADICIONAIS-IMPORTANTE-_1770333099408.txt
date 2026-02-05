@@ -1,0 +1,1094 @@
+# 🎯 COMPLEMENTO AO PROMPT - MELHORIAS ADICIONAIS
+
+## ⚠️ IMPORTANTE: Cole este prompt JUNTO com o anterior no Replit
+
+---
+
+## 📸 UPLOAD DE FOTOS
+
+### **TAREFA 8: Adicionar Upload de Foto no Onboarding**
+
+**Modificar:** `client/src/pages/onboarding.tsx`
+
+**No Step 1 (dados pessoais), adicionar ANTES dos campos de nome:**
+
+```typescript
+import { Camera, Upload } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+// Adicionar state:
+const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+// Adicionar componente de upload:
+<div className="flex flex-col items-center mb-6">
+  <div className="relative group">
+    <Avatar className="w-24 h-24 border-2 border-indigo-100">
+      {profilePhoto ? (
+        <AvatarImage src={profilePhoto} alt="Foto de perfil" />
+      ) : (
+        <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100">
+          <Camera className="h-8 w-8 text-indigo-400" />
+        </AvatarFallback>
+      )}
+    </Avatar>
+    
+    <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+      <Upload className="h-6 w-6 text-white" />
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setProfilePhoto(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+          }
+        }}
+      />
+    </label>
+  </div>
+  
+  <p className="text-sm text-muted-foreground mt-2">
+    {profilePhoto ? "Clique para trocar" : "Adicionar foto de perfil"}
+  </p>
+  <p className="text-xs text-muted-foreground">(Opcional)</p>
+</div>
+```
+
+**Salvar no schema:**
+```typescript
+// Adicionar no insertUserSchema:
+profilePhotoBase64: z.string().optional(),
+```
+
+---
+
+### **TAREFA 9: Adicionar Upload de Foto do Parceiro no Radar do Coração**
+
+**Modificar:** `client/src/pages/heart-radar.tsx` (componente `PartnerForm`)
+
+**Adicionar ANTES do campo "Nome do parceiro":**
+
+```typescript
+const [partnerPhoto, setPartnerPhoto] = useState<string | null>(null);
+
+<div className="flex flex-col items-center mb-6">
+  <div className="relative group">
+    <Avatar className="w-32 h-32 border-2 border-pink-100">
+      {partnerPhoto ? (
+        <AvatarImage src={partnerPhoto} alt="Foto do parceiro" />
+      ) : (
+        <AvatarFallback className="bg-gradient-to-br from-pink-100 to-indigo-100">
+          <Heart className="h-12 w-12 text-pink-400" />
+        </AvatarFallback>
+      )}
+    </Avatar>
+    
+    <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+      <Upload className="h-6 w-6 text-white" />
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setPartnerPhoto(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+          }
+        }}
+      />
+    </label>
+  </div>
+  
+  <p className="text-sm text-muted-foreground mt-2">
+    Foto do parceiro
+  </p>
+  <p className="text-xs text-muted-foreground">(Obrigatório)</p>
+</div>
+```
+
+**Atualizar schema de parceiro:**
+```typescript
+// Em shared/schema.ts, adicionar:
+photoBase64: text("photo_base64"),
+```
+
+---
+
+## 🌎 SELETOR DE ESTADO E CIDADE
+
+### **TAREFA 10: Criar Componente de Seleção de Estado/Cidade**
+
+**Criar arquivo:** `client/src/components/BrazilStateCitySelector.tsx`
+
+```typescript
+import { useState } from "react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface StateCitySelectorProps {
+  onStateChange: (state: string) => void;
+  onCityChange: (city: string) => void;
+  selectedState?: string;
+  selectedCity?: string;
+  label?: string;
+}
+
+const brazilStates = [
+  { uf: "AC", name: "Acre" },
+  { uf: "AL", name: "Alagoas" },
+  { uf: "AP", name: "Amapá" },
+  { uf: "AM", name: "Amazonas" },
+  { uf: "BA", name: "Bahia" },
+  { uf: "CE", name: "Ceará" },
+  { uf: "DF", name: "Distrito Federal" },
+  { uf: "ES", name: "Espírito Santo" },
+  { uf: "GO", name: "Goiás" },
+  { uf: "MA", name: "Maranhão" },
+  { uf: "MT", name: "Mato Grosso" },
+  { uf: "MS", name: "Mato Grosso do Sul" },
+  { uf: "MG", name: "Minas Gerais" },
+  { uf: "PA", name: "Pará" },
+  { uf: "PB", name: "Paraíba" },
+  { uf: "PR", name: "Paraná" },
+  { uf: "PE", name: "Pernambuco" },
+  { uf: "PI", name: "Piauí" },
+  { uf: "RJ", name: "Rio de Janeiro" },
+  { uf: "RN", name: "Rio Grande do Norte" },
+  { uf: "RS", name: "Rio Grande do Sul" },
+  { uf: "RO", name: "Rondônia" },
+  { uf: "RR", name: "Roraima" },
+  { uf: "SC", name: "Santa Catarina" },
+  { uf: "SP", name: "São Paulo" },
+  { uf: "SE", name: "Sergipe" },
+  { uf: "TO", name: "Tocantins" },
+];
+
+// Top 30 cidades por estado (principais)
+const citiesByState: Record<string, string[]> = {
+  "SP": ["São Paulo", "Campinas", "Santos", "Ribeirão Preto", "Sorocaba", "São José dos Campos", "Osasco", "Santo André", "Guarulhos", "Bauru"],
+  "RJ": ["Rio de Janeiro", "Niterói", "Nova Iguaçu", "Duque de Caxias", "São Gonçalo", "Campos dos Goytacazes", "Petrópolis", "Volta Redonda", "Macaé", "Cabo Frio"],
+  "MG": ["Belo Horizonte", "Uberlândia", "Contagem", "Juiz de Fora", "Betim", "Montes Claros", "Ribeirão das Neves", "Uberaba", "Governador Valadares", "Ipatinga"],
+  "SC": ["Florianópolis", "Joinville", "Blumenau", "Balneário Camboriú", "Chapecó", "Criciúma", "Itajaí", "Jaraguá do Sul", "Lages", "Palhoça"],
+  "PR": ["Curitiba", "Londrina", "Maringá", "Ponta Grossa", "Cascavel", "Foz do Iguaçu", "São José dos Pinhais", "Colombo", "Guarapuava", "Paranaguá"],
+  "RS": ["Porto Alegre", "Caxias do Sul", "Pelotas", "Canoas", "Santa Maria", "Gravataí", "Viamão", "Novo Hamburgo", "São Leopoldo", "Rio Grande"],
+  "BA": ["Salvador", "Feira de Santana", "Vitória da Conquista", "Camaçari", "Itabuna", "Juazeiro", "Lauro de Freitas", "Ilhéus", "Jequié", "Teixeira de Freitas"],
+  "PE": ["Recife", "Jaboatão dos Guararapes", "Olinda", "Caruaru", "Petrolina", "Paulista", "Cabo de Santo Agostinho", "Camaragibe", "Garanhuns", "Vitória de Santo Antão"],
+  "CE": ["Fortaleza", "Caucaia", "Juazeiro do Norte", "Maracanaú", "Sobral", "Crato", "Itapipoca", "Maranguape", "Iguatu", "Quixadá"],
+  "GO": ["Goiânia", "Aparecida de Goiânia", "Anápolis", "Rio Verde", "Luziânia", "Águas Lindas de Goiás", "Valparaíso de Goiás", "Trindade", "Formosa", "Novo Gama"],
+  "PA": ["Belém", "Ananindeua", "Santarém", "Marabá", "Castanhal", "Parauapebas", "Itaituba", "Cametá", "Bragança", "Abaetetuba"],
+  // Adicione mais estados conforme necessário
+  "DF": ["Brasília"],
+  "ES": ["Vitória", "Vila Velha", "Serra", "Cariacica", "Cachoeiro de Itapemirim", "Linhares", "São Mateus", "Colatina", "Guarapari", "Aracruz"],
+  "AM": ["Manaus", "Parintins", "Itacoatiara", "Manacapuru", "Coari", "Tefé", "Tabatinga", "Maués", "Humaitá", "São Gabriel da Cachoeira"],
+  "MA": ["São Luís", "Imperatriz", "Caxias", "Timon", "Codó", "Paço do Lumiar", "São José de Ribamar", "Bacabal", "Açailândia", "Balsas"],
+  "RN": ["Natal", "Mossoró", "Parnamirim", "São Gonçalo do Amarante", "Macaíba", "Ceará-Mirim", "Caicó", "Assu", "Currais Novos", "Nova Cruz"],
+  "PB": ["João Pessoa", "Campina Grande", "Santa Rita", "Patos", "Bayeux", "Sousa", "Cajazeiras", "Guarabira", "Sapé", "Monteiro"],
+  "AL": ["Maceió", "Arapiraca", "Rio Largo", "Palmeira dos Índios", "União dos Palmares", "São Miguel dos Campos", "Penedo", "Coruripe", "Marechal Deodoro", "Delmiro Gouveia"],
+  "SE": ["Aracaju", "Nossa Senhora do Socorro", "Lagarto", "Itabaiana", "São Cristóvão", "Estância", "Propriá", "Tobias Barreto", "Simão Dias", "Barra dos Coqueiros"],
+  "PI": ["Teresina", "Parnaíba", "Picos", "Piripiri", "Floriano", "Campo Maior", "Barras", "Altos", "União", "José de Freitas"],
+  "RO": ["Porto Velho", "Ji-Paraná", "Ariquemes", "Vilhena", "Cacoal", "Rolim de Moura", "Guajará-Mirim", "Jaru", "Ouro Preto do Oeste", "Pimenta Bueno"],
+  "AC": ["Rio Branco", "Cruzeiro do Sul", "Sena Madureira", "Tarauacá", "Feijó", "Brasileia", "Plácido de Castro", "Senador Guiomard", "Xapuri", "Epitaciolândia"],
+  "AP": ["Macapá", "Santana", "Laranjal do Jari", "Oiapoque", "Mazagão", "Porto Grande", "Tartarugalzinho", "Vitória do Jari", "Calçoene", "Amapá"],
+  "RR": ["Boa Vista", "Rorainópolis", "Caracaraí", "Alto Alegre", "Mucajaí", "Cantá", "Bonfim", "Normandia", "Pacaraima", "São João da Baliza"],
+  "TO": ["Palmas", "Araguaína", "Gurupi", "Porto Nacional", "Paraíso do Tocantins", "Araguatins", "Colinas do Tocantins", "Guaraí", "Tocantinópolis", "Miracema do Tocantins"],
+  "MT": ["Cuiabá", "Várzea Grande", "Rondonópolis", "Sinop", "Tangará da Serra", "Cáceres", "Sorriso", "Lucas do Rio Verde", "Barra do Garças", "Primavera do Leste"],
+  "MS": ["Campo Grande", "Dourados", "Três Lagoas", "Corumbá", "Ponta Porã", "Sidrolândia", "Naviraí", "Nova Andradina", "Aquidauana", "Paranaíba"],
+};
+
+export function BrazilStateCitySelector({
+  onStateChange,
+  onCityChange,
+  selectedState,
+  selectedCity,
+  label = "Local de nascimento"
+}: StateCitySelectorProps) {
+  const [state, setState] = useState(selectedState || "");
+  const [city, setCity] = useState(selectedCity || "");
+
+  const handleStateChange = (newState: string) => {
+    setState(newState);
+    setCity(""); // Reset city when state changes
+    onStateChange(newState);
+    onCityChange("");
+  };
+
+  const handleCityChange = (newCity: string) => {
+    setCity(newCity);
+    onCityChange(newCity);
+  };
+
+  const availableCities = state ? citiesByState[state] || [] : [];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>{label} - Estado</Label>
+        <Select value={state} onValueChange={handleStateChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o estado" />
+          </SelectTrigger>
+          <SelectContent>
+            {brazilStates.map((s) => (
+              <SelectItem key={s.uf} value={s.uf}>
+                {s.name} ({s.uf})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {state && (
+        <div>
+          <Label>Cidade</Label>
+          <Select value={city} onValueChange={handleCityChange} disabled={!state}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a cidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableCities.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+**Usar no Onboarding (Step 2):**
+```typescript
+import { BrazilStateCitySelector } from "@/components/BrazilStateCitySelector";
+
+// Substituir o campo de texto "birthCity" por:
+<BrazilStateCitySelector
+  onStateChange={(state) => form.setValue("birthState", state)}
+  onCityChange={(city) => form.setValue("birthCity", city)}
+  selectedState={form.watch("birthState")}
+  selectedCity={form.watch("birthCity")}
+/>
+```
+
+**Usar no Radar do Coração (PartnerForm):**
+```typescript
+<BrazilStateCitySelector
+  onStateChange={(state) => setPartnerState(state)}
+  onCityChange={(city) => setPartnerCity(city)}
+  label="Local de nascimento do parceiro"
+/>
+```
+
+---
+
+## 📄 PÁGINAS DE TERMOS E PRIVACIDADE
+
+### **TAREFA 11: Criar Páginas de Termos e Privacidade**
+
+**Criar arquivo:** `client/src/pages/terms.tsx`
+
+```typescript
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
+
+export default function Terms() {
+  const [, setLocation] = useLocation();
+
+  return (
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-4xl mx-auto">
+        <Button 
+          variant="ghost" 
+          className="mb-6"
+          onClick={() => setLocation("/")}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Termos de Uso - AstroMeu</CardTitle>
+          </CardHeader>
+          <CardContent className="prose prose-sm max-w-none space-y-4">
+            <p className="text-muted-foreground">Última atualização: {new Date().toLocaleDateString('pt-BR')}</p>
+
+            <h3 className="text-lg font-medium mt-6">1. Aceitação dos Termos</h3>
+            <p>
+              Ao acessar e usar o AstroMeu, você concorda em estar vinculado a estes Termos de Uso. 
+              Se você não concordar com alguma parte destes termos, não deve usar nosso serviço.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">2. Descrição do Serviço</h3>
+            <p>
+              O AstroMeu é uma plataforma de orientação astrológica que oferece:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Áudios diários personalizados baseados em seu mapa astral</li>
+              <li>Chat com IA especializada em astrologia</li>
+              <li>Análise de compatibilidade (planos premium)</li>
+              <li>Diário astrológico com feedback personalizado (plano superior)</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">3. Cadastro e Conta</h3>
+            <p>
+              Para usar o AstroMeu, você precisa:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Ter pelo menos 18 anos de idade</li>
+              <li>Fornecer informações verdadeiras e precisas</li>
+              <li>Manter a confidencialidade da sua conta</li>
+              <li>Notificar imediatamente sobre uso não autorizado</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">4. Planos e Pagamentos</h3>
+            <p>
+              Oferecemos três planos de assinatura:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>Essência (R$ 29,90/mês):</strong> Funcionalidades básicas</li>
+              <li><strong>Conexão (R$ 39,90/mês):</strong> Inclui Radar do Coração</li>
+              <li><strong>Plenitude (R$ 59,90/mês):</strong> Acesso completo</li>
+            </ul>
+            <p className="mt-2">
+              Pagamentos são processados mensalmente. Você pode cancelar a qualquer momento, 
+              mas não há reembolso proporcional do período atual.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">5. Uso Aceitável</h3>
+            <p>Você concorda em NÃO:</p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Usar o serviço para fins ilegais</li>
+              <li>Compartilhar sua conta com terceiros</li>
+              <li>Fazer engenharia reversa da plataforma</li>
+              <li>Usar bots ou scripts automatizados</li>
+              <li>Abusar do suporte ou chat</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">6. Natureza do Conteúdo</h3>
+            <p>
+              <strong>IMPORTANTE:</strong> O AstroMeu oferece orientação astrológica para fins de 
+              entretenimento e autoconhecimento. Nossas orientações NÃO substituem:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Aconselhamento médico ou psicológico profissional</li>
+              <li>Aconselhamento jurídico</li>
+              <li>Aconselhamento financeiro</li>
+              <li>Tratamento de saúde mental</li>
+            </ul>
+            <p className="mt-2">
+              Se você está enfrentando problemas sérios de saúde mental, relacionamento violento, 
+              ou situações de emergência, procure ajuda profissional imediatamente.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">7. Propriedade Intelectual</h3>
+            <p>
+              Todo conteúdo do AstroMeu (textos, áudios, designs, código) é propriedade da 
+              plataforma e protegido por leis de direitos autorais.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">8. Limitação de Responsabilidade</h3>
+            <p>
+              O AstroMeu não se responsabiliza por:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Decisões tomadas com base nas orientações astrológicas</li>
+              <li>Problemas técnicos ou indisponibilidade temporária</li>
+              <li>Perda de dados ou conteúdo</li>
+              <li>Danos indiretos ou consequenciais</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">9. Cancelamento</h3>
+            <p>
+              Você pode cancelar sua assinatura a qualquer momento através do seu perfil. 
+              O cancelamento terá efeito ao final do período de cobrança atual.
+            </p>
+            <p className="mt-2">
+              Nós podemos suspender ou encerrar sua conta se você violar estes termos.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">10. Alterações nos Termos</h3>
+            <p>
+              Podemos modificar estes termos a qualquer momento. Notificaremos você sobre 
+              mudanças significativas por email. O uso continuado após as mudanças constitui 
+              aceitação dos novos termos.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">11. Lei Aplicável</h3>
+            <p>
+              Estes termos são regidos pelas leis brasileiras. Qualquer disputa será resolvida 
+              nos tribunais do Brasil.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">12. Contato</h3>
+            <p>
+              Para questões sobre estes termos, entre em contato:<br />
+              Email: contato@astromeu.com.br
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+```
+
+**Criar arquivo:** `client/src/pages/privacy.tsx`
+
+```typescript
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+import { ArrowLeft, Shield } from "lucide-react";
+
+export default function Privacy() {
+  const [, setLocation] = useLocation();
+
+  return (
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-4xl mx-auto">
+        <Button 
+          variant="ghost" 
+          className="mb-6"
+          onClick={() => setLocation("/")}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                <Shield className="h-6 w-6 text-indigo-600" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl">Política de Privacidade</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Última atualização: {new Date().toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="prose prose-sm max-w-none space-y-4">
+            <h3 className="text-lg font-medium mt-6">1. Informações que Coletamos</h3>
+            
+            <h4 className="text-base font-medium mt-4">1.1 Informações Fornecidas por Você</h4>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>Dados de cadastro:</strong> nome, email, WhatsApp</li>
+              <li><strong>Dados astrológicos:</strong> data, hora e local de nascimento</li>
+              <li><strong>Fotos:</strong> foto de perfil e foto do parceiro (opcional)</li>
+              <li><strong>Preferências:</strong> voz preferida para áudios, horário de notificação</li>
+              <li><strong>Conteúdo:</strong> mensagens no chat, entradas do diário</li>
+            </ul>
+
+            <h4 className="text-base font-medium mt-4">1.2 Informações Coletadas Automaticamente</h4>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Endereço IP e localização aproximada</li>
+              <li>Tipo de dispositivo e navegador</li>
+              <li>Horários de acesso e uso</li>
+              <li>Páginas visualizadas e ações realizadas</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">2. Como Usamos Suas Informações</h3>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>Serviço principal:</strong> Gerar mapas astrais, áudios personalizados, análises de compatibilidade</li>
+              <li><strong>IA e personalização:</strong> Treinar e melhorar respostas do chat astrológico</li>
+              <li><strong>Comunicação:</strong> Enviar áudios diários via WhatsApp, notificações importantes</li>
+              <li><strong>Pagamentos:</strong> Processar assinaturas e cobranças</li>
+              <li><strong>Melhorias:</strong> Analisar uso para melhorar a plataforma</li>
+              <li><strong>Suporte:</strong> Responder dúvidas e resolver problemas</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">3. Compartilhamento de Dados</h3>
+            <p>
+              Nós NÃO vendemos seus dados pessoais. Compartilhamos informações apenas com:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>Processadores de pagamento:</strong> Para cobranças (Stripe/Cakto)</li>
+              <li><strong>WhatsApp API:</strong> Para envio de áudios diários</li>
+              <li><strong>OpenAI/Anthropic:</strong> Para processamento de chat (dados anonimizados quando possível)</li>
+              <li><strong>Serviços de infraestrutura:</strong> Hospedagem (Replit/Railway) e banco de dados (Supabase)</li>
+              <li><strong>Autoridades:</strong> Quando exigido por lei</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6">4. Uso de IA (Inteligência Artificial)</h3>
+            <p>
+              <strong>Importante:</strong> Utilizamos modelos de IA (OpenAI/Claude) para:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Gerar respostas no chat astrológico</li>
+              <li>Criar scripts dos áudios diários</li>
+              <li>Analisar entradas do diário e detectar padrões</li>
+            </ul>
+            <p className="mt-2">
+              Suas conversas podem ser processadas por estes serviços. Não compartilhe informações 
+              extremamente sensíveis ou confidenciais no chat.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">5. Armazenamento e Segurança</h3>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Dados armazenados em servidores seguros (Supabase)</li>
+              <li>Conexões criptografadas (HTTPS/TLS)</li>
+              <li>Senhas com hash seguro (se implementarmos login tradicional)</li>
+              <li>Backups regulares</li>
+              <li>Acesso restrito apenas para equipe autorizada</li>
+            </ul>
+            <p className="mt-2">
+              <strong>Importante:</strong> Nenhum sistema é 100% seguro. Mantenha sua senha privada.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">6. Seus Direitos (LGPD)</h3>
+            <p>Você tem direito de:</p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>Acessar:</strong> Ver quais dados temos sobre você</li>
+              <li><strong>Corrigir:</strong> Atualizar dados incorretos</li>
+              <li><strong>Deletar:</strong> Solicitar exclusão da conta e dados</li>
+              <li><strong>Portar:</strong> Receber seus dados em formato estruturado</li>
+              <li><strong>Revogar:</strong> Retirar consentimento a qualquer momento</li>
+              <li><strong>Opor-se:</strong> Discordar de certos usos dos dados</li>
+            </ul>
+            <p className="mt-2">
+              Para exercer seus direitos, entre em contato: privacidade@astromeu.com.br
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">7. Retenção de Dados</h3>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Dados de conta: Mantidos enquanto conta estiver ativa</li>
+              <li>Histórico de chat: 90 dias após última mensagem</li>
+              <li>Entradas do diário: 1 ano após criação</li>
+              <li>Áudios diários: 30 dias</li>
+              <li>Dados de pagamento: 5 anos (obrigação legal)</li>
+            </ul>
+            <p className="mt-2">
+              Após exclusão da conta, dados pessoais são removidos em até 30 dias, 
+              exceto quando exigido por lei.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">8. Cookies e Rastreamento</h3>
+            <p>Usamos cookies para:</p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Manter você logado</li>
+              <li>Lembrar preferências</li>
+              <li>Analisar uso da plataforma (Google Analytics - opcional)</li>
+            </ul>
+            <p className="mt-2">
+              Você pode desabilitar cookies nas configurações do navegador, mas isso pode 
+              afetar funcionalidades.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">9. Menores de Idade</h3>
+            <p>
+              O AstroMeu é destinado a maiores de 18 anos. Não coletamos intencionalmente 
+              dados de menores. Se identificarmos, deletaremos imediatamente.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">10. Transferência Internacional</h3>
+            <p>
+              Alguns de nossos fornecedores (OpenAI, ElevenLabs) estão nos EUA. Ao usar o 
+              serviço, você concorda com transferência de dados para estes países, que possuem 
+              proteções de privacidade equivalentes.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">11. Alterações nesta Política</h3>
+            <p>
+              Podemos atualizar esta política ocasionalmente. Mudanças significativas serão 
+              notificadas por email. Recomendamos revisar periodicamente.
+            </p>
+
+            <h3 className="text-lg font-medium mt-6">12. Contato - Encarregado de Dados (DPO)</h3>
+            <p>
+              Para questões sobre privacidade ou exercer seus direitos:<br />
+              Email: privacidade@astromeu.com.br<br />
+              DPO (Data Protection Officer): [Nome a definir]
+            </p>
+
+            <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg mt-6">
+              <p className="text-sm font-medium mb-2">📧 Dúvidas sobre Privacidade?</p>
+              <p className="text-sm text-muted-foreground">
+                Estamos comprometidos com a transparência. Se tiver qualquer dúvida sobre 
+                como tratamos seus dados, entre em contato conosco.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+```
+
+**Atualizar rotas em App.tsx:**
+```typescript
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
+
+// Adicionar:
+<Route path="/terms" component={Terms} />
+<Route path="/privacy" component={Privacy} />
+```
+
+**Atualizar links no Onboarding:**
+```typescript
+<a href="/terms" target="_blank" className="text-indigo-500 underline">
+  termos de uso
+</a>
+{" e a "}
+<a href="/privacy" target="_blank" className="text-indigo-500 underline">
+  política de privacidade
+</a>
+```
+
+---
+
+## 🎤 MELHORAR LABEL DE PREFERÊNCIA DE VOZ
+
+### **TAREFA 12: Tornar Seleção de Voz Mais Visual**
+
+**Modificar:** `client/src/pages/onboarding.tsx` (Step 3)
+
+**Substituir o texto e layout:**
+
+```typescript
+<FormField
+  control={form.control}
+  name="voicePreference"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel className="text-base">Gênero da voz do seu Recado Diário ✨</FormLabel>
+      <p className="text-sm text-muted-foreground mb-3">
+        Escolha a voz que mais combina com você
+      </p>
+      <FormControl>
+        <RadioGroup
+          onValueChange={field.onChange}
+          defaultValue={field.value}
+          className="grid grid-cols-2 gap-4"
+        >
+          <Label
+            htmlFor="voice-feminine"
+            className="cursor-pointer"
+          >
+            <div className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
+              field.value === "feminine"
+                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 shadow-md"
+                : "border-border hover:border-indigo-200"
+            }`}>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+                <span className="text-3xl">👩</span>
+              </div>
+              <RadioGroupItem value="feminine" id="voice-feminine" className="sr-only" />
+              <div className="text-center">
+                <p className="font-medium">Voz Feminina</p>
+                <p className="text-xs text-muted-foreground mt-1">Suave e acolhedora</p>
+              </div>
+            </div>
+          </Label>
+          
+          <Label
+            htmlFor="voice-masculine"
+            className="cursor-pointer"
+          >
+            <div className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
+              field.value === "masculine"
+                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 shadow-md"
+                : "border-border hover:border-indigo-200"
+            }`}>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center">
+                <span className="text-3xl">👨</span>
+              </div>
+              <RadioGroupItem value="masculine" id="voice-masculine" className="sr-only" />
+              <div className="text-center">
+                <p className="font-medium">Voz Masculina</p>
+                <p className="text-xs text-muted-foreground mt-1">Firme e tranquila</p>
+              </div>
+            </div>
+          </Label>
+        </RadioGroup>
+      </FormControl>
+    </FormItem>
+  )}
+/>
+```
+
+---
+
+## 🔓 PLANO PADRÃO DURANTE DESENVOLVIMENTO
+
+### **TAREFA 13: Definir Plano Plenitude como Padrão**
+
+**Modificar:** `shared/schema.ts`
+
+Linha 20, mudar:
+```typescript
+plan: text("plan").default("plenitude").notNull(), // TEMPORÁRIO - desenvolvimento
+```
+
+**E adicionar comentário:**
+```typescript
+// IMPORTANTE: Antes de produção, mudar para:
+// plan: text("plan").default("essencia").notNull(),
+```
+
+**Modificar:** `client/src/pages/onboarding.tsx`
+
+No defaultValues do form, adicionar:
+```typescript
+defaultValues: {
+  // ... outros campos
+  plan: "plenitude" as PlanType, // TEMPORÁRIO - desenvolvimento
+}
+```
+
+---
+
+## 🔐 SISTEMA DE LOGIN
+
+### **TAREFA 14: Adicionar Tela de Login**
+
+**Criar arquivo:** `client/src/pages/login.tsx`
+
+```typescript
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Sparkles, Mail, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+
+const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+});
+
+type LoginData = z.infer<typeof loginSchema>;
+
+export default function Login() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const form = useForm<LoginData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginData) => {
+      const response = await apiRequest("POST", "/api/auth/login", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      localStorage.setItem("userId", data.userId);
+      setLocation("/dashboard");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao fazer login",
+        description: error.message || "Verifique suas credenciais",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: LoginData) => {
+    loginMutation.mutate(data);
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-background flex flex-col items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
+            <Sparkles className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-medium text-foreground">Bem-vindo de volta!</h1>
+          <p className="text-muted-foreground mt-1">
+            Entre para acessar sua jornada astrológica
+          </p>
+        </div>
+
+        <Card className="border-0 shadow-lg shadow-indigo-100/50 dark:shadow-none">
+          <CardContent className="pt-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="email"
+                            placeholder="seu@email.com"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? "Entrando..." : "Entrar"}
+                </Button>
+              </form>
+            </Form>
+
+            <div className="mt-6 text-center space-y-3">
+              <Button
+                variant="link"
+                className="text-sm"
+                onClick={() => {
+                  toast({
+                    title: "Em breve!",
+                    description: "Recuperação de senha será implementada em breve.",
+                  });
+                }}
+              >
+                Esqueceu sua senha?
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Primeira vez?
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setLocation("/")}
+              >
+                Criar conta gratuita
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <footer className="text-center mt-6 text-xs text-muted-foreground">
+          <a href="/terms" className="hover:text-indigo-500">Termos de Uso</a>
+          {" • "}
+          <a href="/privacy" className="hover:text-indigo-500">Privacidade</a>
+        </footer>
+      </div>
+    </div>
+  );
+}
+```
+
+**Atualizar Onboarding para adicionar botão de login:**
+
+```typescript
+// No topo da página de onboarding, adicionar:
+<div className="absolute top-4 right-4">
+  <Button
+    variant="ghost"
+    onClick={() => setLocation("/login")}
+  >
+    Já tem conta? Entrar
+  </Button>
+</div>
+```
+
+**Adicionar rota em App.tsx:**
+```typescript
+import Login from "@/pages/login";
+
+// Adicionar:
+<Route path="/login" component={Login} />
+```
+
+---
+
+## 🎨 ELEMENTOS MAIS DINÂMICOS (REACT)
+
+### **TAREFA 15: Adicionar Micro-interações e Animações**
+
+**Instalar Framer Motion (opcional mas recomendado):**
+```bash
+npm install framer-motion
+```
+
+**Exemplos de uso:**
+
+**1. Cards com hover:**
+```typescript
+import { motion } from "framer-motion";
+
+<motion.div
+  whileHover={{ scale: 1.02, boxShadow: "0 4px 20px rgba(99, 102, 241, 0.1)" }}
+  transition={{ duration: 0.2 }}
+>
+  <Card>
+    {/* conteúdo */}
+  </Card>
+</motion.div>
+```
+
+**2. Botões com feedback:**
+```typescript
+<motion.button
+  whileTap={{ scale: 0.95 }}
+  whileHover={{ scale: 1.05 }}
+>
+  <Button>Clique aqui</Button>
+</motion.button>
+```
+
+**3. Fade-in em listas:**
+```typescript
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.3 }}
+>
+  {/* conteúdo */}
+</motion.div>
+```
+
+**4. Stagger em cards do diário:**
+```typescript
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
+
+<motion.div variants={container} initial="hidden" animate="show">
+  {entries.map((entry) => (
+    <motion.div key={entry.id} variants={item}>
+      <Card>{/* conteúdo */}</Card>
+    </motion.div>
+  ))}
+</motion.div>
+```
+
+---
+
+## ✅ CHECKLIST FINAL DE VALIDAÇÃO:
+
+Após implementar TUDO, verificar:
+
+**Upload de Fotos:**
+- [ ] Consigo fazer upload de foto no onboarding
+- [ ] Consigo fazer upload de foto do parceiro no Radar do Coração
+- [ ] Preview da foto aparece corretamente
+- [ ] Hover mostra opção de trocar foto
+
+**Seletor de Estado/Cidade:**
+- [ ] Consigo selecionar estado em dropdown
+- [ ] Ao selecionar estado, dropdown de cidade aparece
+- [ ] Lista de cidades está correta para o estado
+- [ ] Funciona no onboarding
+- [ ] Funciona no cadastro do parceiro
+
+**Páginas Legais:**
+- [ ] Link "termos de uso" abre página /terms
+- [ ] Link "política de privacidade" abre página /privacy
+- [ ] Páginas têm conteúdo completo
+- [ ] Botão voltar funciona
+
+**Preferência de Voz:**
+- [ ] Visual está mais atrativo (com ícones/emojis)
+- [ ] Cards mudam ao selecionar
+- [ ] Label está clara
+
+**Plano Padrão:**
+- [ ] Usuários novos são criados com plano "plenitude"
+- [ ] Todas funcionalidades estão desbloqueadas
+
+**Sistema de Login:**
+- [ ] Página /login existe e funciona
+- [ ] Onboarding tem botão "Já tem conta?"
+- [ ] Login redireciona para dashboard
+- [ ] Erro de credenciais mostra mensagem
+
+**Animações:**
+- [ ] Cards têm hover suave
+- [ ] Botões têm feedback tátil
+- [ ] Transições são suaves
+- [ ] Não há travamentos
+
+---
+
+## 🚨 NOTAS IMPORTANTES:
+
+1. **Fotos são armazenadas como Base64** no banco (campo `text`)
+2. **Para produção:** considere usar CDN/S3 para fotos
+3. **Validação de tamanho:** adicionar limite de 2MB nas fotos
+4. **Compressão:** considere comprimir imagens antes de salvar
+5. **LGPD:** Documentação de privacidade está completa e conforme lei brasileira
+
+---
+
+Cole este prompt JUNTO com o anterior no Replit para implementação completa! 🚀
+
