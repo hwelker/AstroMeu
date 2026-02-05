@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { MessageSquare, User, CreditCard, Sparkles, Menu, LogOut, Map, Sun, Heart, BookOpen } from "lucide-react";
+import { MessageSquare, User, CreditCard, Sparkles, Menu, LogOut, Map, Sun, Heart, BookOpen, Play, Pause, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -392,14 +392,84 @@ export default function Dashboard() {
                         <Skeleton className="h-16 w-2/3 ml-auto" />
                       </div>
                     ) : messages.length === 0 && !isStreaming ? (
-                      <div className="text-center py-12" data-testid="container-empty-chat">
-                        <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mx-auto mb-4">
-                          <Sparkles className="h-8 w-8 text-indigo-500" />
-                        </div>
-                        <h3 className="font-medium mb-2" data-testid="text-empty-chat-title">Olá, {user.fullName.split(" ")[0]}!</h3>
-                        <p className="text-muted-foreground text-sm max-w-sm mx-auto" data-testid="text-empty-chat-description">
-                          Sou Luna, sua astróloga virtual. Pergunte sobre seu mapa astral, relacionamentos, carreira ou qualquer aspecto da sua vida.
+                      <div className="flex flex-col items-center justify-center py-8" data-testid="container-empty-chat">
+                        <p className="text-sm text-muted-foreground mb-6" data-testid="text-greeting-date">
+                          {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
                         </p>
+
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-5 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30" data-testid="icon-luna-avatar">
+                          <Sparkles className="h-10 w-10 text-white" />
+                        </div>
+
+                        <h3 className="text-xl font-medium mb-1" data-testid="text-empty-chat-title">
+                          Bom dia, {user.fullName.split(" ")[0]}!
+                        </h3>
+                        <p className="text-muted-foreground text-sm mb-8" data-testid="text-empty-chat-subtitle">
+                          As estrelas prepararam algo especial para você
+                        </p>
+
+                        <div className="w-full max-w-sm" data-testid="container-daily-audio">
+                          <div className="rounded-[20px] bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-700 p-5 text-white shadow-xl shadow-indigo-200 dark:shadow-indigo-900/40">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Volume2 className="h-4 w-4 text-indigo-200" />
+                              <span className="text-xs font-medium text-indigo-200 uppercase tracking-wider" data-testid="text-audio-label">Áudio do Dia</span>
+                            </div>
+
+                            <p className="text-sm text-indigo-100 mb-5 leading-relaxed" data-testid="text-audio-description">
+                              Sua mensagem personalizada das estrelas baseada no seu signo e momento atual.
+                            </p>
+
+                            <div className="flex items-center gap-3 mb-4">
+                              <Button
+                                size="icon"
+                                className="rounded-full bg-white text-indigo-600 shrink-0"
+                                aria-label="Reproduzir áudio do dia"
+                                data-testid="button-audio-play"
+                                onClick={() => {
+                                  if (todayAudio) {
+                                    setShowAudioPopup(true);
+                                  } else {
+                                    toast({
+                                      title: "Áudio em preparação",
+                                      description: "Seu áudio personalizado está sendo gerado pelas estrelas.",
+                                    });
+                                  }
+                                }}
+                              >
+                                <Play className="h-5 w-5 ml-0.5" />
+                              </Button>
+
+                              <div className="flex-1">
+                                <div className="flex items-end gap-[3px] h-8" data-testid="visual-audio-waveform">
+                                  {[0.3, 0.5, 0.8, 0.6, 1, 0.7, 0.4, 0.9, 0.5, 0.7, 0.3, 0.6, 0.8, 0.4, 0.9, 0.5, 0.7, 0.6, 0.3, 0.8, 0.5, 0.4, 0.7, 0.6, 0.9, 0.3, 0.5, 0.8, 0.4, 0.6].map((h, i) => (
+                                    <div
+                                      key={i}
+                                      className="flex-1 rounded-full bg-white/30"
+                                      style={{ height: `${h * 100}%` }}
+                                    />
+                                  ))}
+                                </div>
+                                <div className="flex justify-between mt-1.5">
+                                  <span className="text-[11px] text-indigo-200" data-testid="text-audio-time-start">0:00</span>
+                                  <span className="text-[11px] text-indigo-200" data-testid="text-audio-time-end">1:30</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-3 border-t border-white/15">
+                              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                                <Sparkles className="h-3 w-3 text-white" />
+                              </div>
+                              <span className="text-xs text-indigo-200" data-testid="text-audio-attribution">Luna preparou esta mensagem para você</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 text-center">
+                          <p className="text-muted-foreground text-sm max-w-xs mx-auto" data-testid="text-empty-chat-description">
+                            Ou pergunte para Luna sobre seu mapa astral, relacionamentos ou carreira
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <>
