@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { MessageSquare, User, CreditCard, Sparkles, Menu, LogOut } from "lucide-react";
+import { MessageSquare, User, CreditCard, Sparkles, Menu, LogOut, Map, Sun, Heart, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
@@ -14,10 +15,14 @@ import { AudioPopup } from "@/components/AudioPopup";
 import { ProfileCard } from "@/components/ProfileCard";
 import { PlanCard } from "@/components/PlanCard";
 import { ZodiacIcon } from "@/components/ZodiacIcon";
+import { MapaAstral } from "@/components/MapaAstral";
+import { HoroscopoDia } from "@/components/HoroscopoDia";
+import { RadarCoracao } from "@/components/RadarCoracao";
+import { DiarioEstrelas } from "@/components/DiarioEstrelas";
 import { getZodiacSign, type ZodiacSign } from "@/lib/zodiac";
-import type { User as UserType, ChatMessage as ChatMessageType, DailyAudio, PlanType } from "@shared/schema";
+import type { User as UserType, ChatMessage as ChatMessageType, DailyAudio, PlanType, Partner, DiaryEntry } from "@shared/schema";
 
-type TabType = "chat" | "profile" | "plans";
+type TabType = "chat" | "horoscopo" | "mapa" | "radar" | "diario" | "profile" | "plans";
 
 const planData = [
   {
@@ -72,6 +77,7 @@ export default function Dashboard() {
   const [showAudioPopup, setShowAudioPopup] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -96,6 +102,16 @@ export default function Dashboard() {
 
   const { data: questionCount = 0 } = useQuery<number>({
     queryKey: ["/api/users", userId, "questions/count"],
+    enabled: !!userId,
+  });
+
+  const { data: partners = [] } = useQuery<Partner[]>({
+    queryKey: ["/api/users", userId, "partners"],
+    enabled: !!userId,
+  });
+
+  const { data: diaryEntries = [] } = useQuery<DiaryEntry[]>({
+    queryKey: ["/api/users", userId, "diary"],
     enabled: !!userId,
   });
 
@@ -203,6 +219,11 @@ export default function Dashboard() {
     setLocation("/");
   };
 
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+  };
+
   if (userLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-background flex items-center justify-center">
@@ -221,17 +242,30 @@ export default function Dashboard() {
   const zodiacSign = user.sunSign as ZodiacSign || getZodiacSign(user.birthDate);
   const maxQuestions = planLimits[user.plan as PlanType];
   const remainingQuestions = Math.max(0, maxQuestions - questionCount);
+  const userPlan = user.plan as PlanType;
+
+  const navItems = [
+    { icon: MessageSquare, label: "Chat", tab: "chat" as TabType },
+    { icon: Sun, label: "Horóscopo", tab: "horoscopo" as TabType },
+    { icon: Map, label: "Mapa Astral", tab: "mapa" as TabType },
+    { icon: Heart, label: "Radar do Coração", tab: "radar" as TabType, premium: userPlan === "essencia" },
+    { icon: BookOpen, label: "Diário", tab: "diario" as TabType, premium: userPlan !== "plenitude" },
+    { icon: User, label: "Perfil", tab: "profile" as TabType },
+    { icon: CreditCard, label: "Planos", tab: "plans" as TabType },
+  ];
 
   const NavItem = ({
     icon: Icon,
     label,
     tab,
     onClick,
+    premium,
   }: {
     icon: typeof MessageSquare;
     label: string;
     tab: TabType;
     onClick: () => void;
+    premium?: boolean;
   }) => (
     <button
       onClick={onClick}
@@ -243,7 +277,12 @@ export default function Dashboard() {
       data-testid={`button-nav-${tab}`}
     >
       <Icon className="h-5 w-5" />
-      <span className="font-medium">{label}</span>
+      <span className="font-medium flex-1 text-left">{label}</span>
+      {premium && (
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
+          PRO
+        </Badge>
+      )}
     </button>
   );
 
@@ -257,27 +296,35 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground" data-testid="text-sidebar-sign">{zodiacSign}</p>
           </div>
         </div>
+        <Badge variant="secondary" className="mt-3 capitalize" data-testid="badge-user-plan">
+          Plano {user.plan}
+        </Badge>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
-        <NavItem
-          icon={MessageSquare}
-          label="Chat Astrológico"
-          tab="chat"
-          onClick={() => setActiveTab("chat")}
-        />
-        <NavItem
-          icon={User}
-          label="Meu Perfil"
-          tab="profile"
-          onClick={() => setActiveTab("profile")}
-        />
-        <NavItem
-          icon={CreditCard}
-          label="Planos"
-          tab="plans"
-          onClick={() => setActiveTab("plans")}
-        />
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide px-4 mb-2">Recursos</p>
+        {navItems.slice(0, 5).map((item) => (
+          <NavItem
+            key={item.tab}
+            icon={item.icon}
+            label={item.label}
+            tab={item.tab}
+            onClick={() => handleTabChange(item.tab)}
+            premium={item.premium}
+          />
+        ))}
+        <div className="pt-4 mt-4 border-t">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide px-4 mb-2">Conta</p>
+          {navItems.slice(5).map((item) => (
+            <NavItem
+              key={item.tab}
+              icon={item.icon}
+              label={item.label}
+              tab={item.tab}
+              onClick={() => handleTabChange(item.tab)}
+            />
+          ))}
+        </div>
       </nav>
 
       <div className="p-4 border-t">
@@ -307,7 +354,7 @@ export default function Dashboard() {
               <Sparkles className="h-6 w-6 text-indigo-500" />
               <span className="font-medium" data-testid="text-header-title">AstroMeu</span>
             </div>
-            <Sheet>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" data-testid="button-mobile-menu">
                   <Menu className="h-5 w-5" />
@@ -330,7 +377,7 @@ export default function Dashboard() {
                     <div>
                       <h2 className="font-medium" data-testid="text-chat-header-title">Chat Astrológico</h2>
                       <p className="text-sm text-muted-foreground" data-testid="text-chat-header-subtitle">
-                        Faça suas perguntas sobre astrologia
+                        Converse com Luna, sua astróloga
                       </p>
                     </div>
                   </div>
@@ -348,9 +395,9 @@ export default function Dashboard() {
                         <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mx-auto mb-4">
                           <Sparkles className="h-8 w-8 text-indigo-500" />
                         </div>
-                        <h3 className="font-medium mb-2" data-testid="text-empty-chat-title">Bem-vindo ao Chat Astrológico</h3>
+                        <h3 className="font-medium mb-2" data-testid="text-empty-chat-title">Olá, {user.fullName.split(" ")[0]}!</h3>
                         <p className="text-muted-foreground text-sm max-w-sm mx-auto" data-testid="text-empty-chat-description">
-                          Faça perguntas sobre seu mapa astral, relacionamentos, carreira ou qualquer aspecto da sua vida que gostaria de explorar astrologicamente.
+                          Sou Luna, sua astróloga virtual. Pergunte sobre seu mapa astral, relacionamentos, carreira ou qualquer aspecto da sua vida.
                         </p>
                       </div>
                     ) : (
@@ -394,6 +441,68 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === "horoscopo" && (
+              <ScrollArea className="h-full">
+                <div className="p-6 max-w-2xl mx-auto">
+                  <HoroscopoDia zodiacSign={zodiacSign} userName={user.fullName} />
+                </div>
+              </ScrollArea>
+            )}
+
+            {activeTab === "mapa" && (
+              <ScrollArea className="h-full">
+                <div className="p-6 max-w-2xl mx-auto">
+                  <MapaAstral
+                    sunSign={zodiacSign}
+                    moonSign={user.moonSign as ZodiacSign | null}
+                    ascendantSign={user.ascendantSign as ZodiacSign | null}
+                    birthDate={user.birthDate}
+                    birthTime={user.birthTime}
+                    birthCity={user.birthCity}
+                  />
+                </div>
+              </ScrollArea>
+            )}
+
+            {activeTab === "radar" && (
+              <ScrollArea className="h-full">
+                <div className="p-6 max-w-2xl mx-auto">
+                  <RadarCoracao
+                    userPlan={userPlan}
+                    partners={partners}
+                    onAddPartner={(data) => {
+                      toast({
+                        title: "Em breve!",
+                        description: "Funcionalidade de adicionar parceiro será ativada em breve.",
+                      });
+                    }}
+                  />
+                </div>
+              </ScrollArea>
+            )}
+
+            {activeTab === "diario" && (
+              <ScrollArea className="h-full">
+                <div className="p-6 max-w-2xl mx-auto">
+                  <DiarioEstrelas
+                    userPlan={userPlan}
+                    entries={diaryEntries}
+                    entriesThisMonth={diaryEntries.filter(e => {
+                      const entryDate = new Date(e.createdAt);
+                      const now = new Date();
+                      return entryDate.getMonth() === now.getMonth() && entryDate.getFullYear() === now.getFullYear();
+                    }).length}
+                    onAddEntry={(content, mood) => {
+                      toast({
+                        title: "Em breve!",
+                        description: "Funcionalidade do diário será ativada em breve.",
+                      });
+                    }}
+                  />
+                </div>
+              </ScrollArea>
             )}
 
             {activeTab === "profile" && (
