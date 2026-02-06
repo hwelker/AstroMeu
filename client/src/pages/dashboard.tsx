@@ -21,7 +21,7 @@ import { RadarCoracao } from "@/components/RadarCoracao";
 import { DiarioEstrelas } from "@/components/DiarioEstrelas";
 import { BottomNav } from "@/components/BottomNav";
 import { getZodiacSign, type ZodiacSign } from "@/lib/zodiac";
-import type { User as UserType, ChatMessage as ChatMessageType, DailyAudio, PlanType, Partner, DiaryEntry } from "@shared/schema";
+import type { User as UserType, ChatMessage as ChatMessageType, DailyAudio, PlanType, DiaryEntry } from "@shared/schema";
 
 type TabType = "chat" | "horoscopo" | "mapa" | "radar" | "diario" | "profile" | "plans";
 
@@ -103,11 +103,6 @@ export default function Dashboard() {
 
   const { data: questionCount = 0 } = useQuery<number>({
     queryKey: ["/api/users", userId, "questions/count"],
-    enabled: !!userId,
-  });
-
-  const { data: partners = [] } = useQuery<Partner[]>({
-    queryKey: ["/api/users", userId, "partners"],
     enabled: !!userId,
   });
 
@@ -540,16 +535,7 @@ export default function Dashboard() {
             {activeTab === "radar" && (
               <ScrollArea className="h-full">
                 <div className="p-6 max-w-2xl mx-auto">
-                  <RadarCoracao
-                    userPlan={userPlan}
-                    partners={partners}
-                    onAddPartner={(data) => {
-                      toast({
-                        title: "Em breve!",
-                        description: "Funcionalidade de adicionar parceiro será ativada em breve.",
-                      });
-                    }}
-                  />
+                  <RadarCoracao userPlan={userPlan} />
                 </div>
               </ScrollArea>
             )}

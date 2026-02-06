@@ -56,18 +56,57 @@ export const dailyQuestionCounts = pgTable("daily_question_counts", {
   forDate: date("for_date").notNull(),
 });
 
-// Partner data for "Radar do Coração" module (Premium/Supreme)
+// Partner data for "Radar do Coração" module (Conexão/Plenitude)
 export const partners = pgTable("partners", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  photoBase64: text("photo_base64"),
   birthDate: date("birth_date").notNull(),
   birthTime: text("birth_time"),
+  birthState: text("birth_state").notNull(),
   birthCity: text("birth_city").notNull(),
-  birthState: text("birth_state"),
-  photoBase64: text("photo_base64"),
+  relationshipType: text("relationship_type").notNull(),
+  howMet: text("how_met"),
+  relationshipDuration: text("relationship_duration"),
+  currentMood: text("current_mood"),
+  mainChallenge: text("main_challenge"),
+  partnerPersonality: text("partner_personality"),
+  loveLanguage: text("love_language"),
   sunSign: text("sun_sign"),
+  moonSign: text("moon_sign"),
+  ascendantSign: text("ascendant_sign"),
   compatibilityScore: integer("compatibility_score"),
+  compatibilityBreakdown: text("compatibility_breakdown"),
+  questionsAskedToday: integer("questions_asked_today").default(0),
+  lastQuestionDate: date("last_question_date"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Daily insights for Radar do Coração
+export const heartRadarDailyInsights = pgTable("heart_radar_daily_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").notNull().references(() => partners.id, { onDelete: "cascade" }),
+  forDate: date("for_date").notNull(),
+  temperatureScore: integer("temperature_score").notNull(),
+  temperatureLabel: text("temperature_label").notNull(),
+  dayQuality: text("day_quality").notNull(),
+  mainMessage: text("main_message").notNull(),
+  favorableTopics: text("favorable_topics").notNull(),
+  avoidTopics: text("avoid_topics").notNull(),
+  bestTimeToTalk: text("best_time_to_talk"),
+  astrologicalInfluences: text("astrological_influences"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Partner questions for Radar do Coração chat
+export const partnerQuestions = pgTable("partner_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").notNull().references(() => partners.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
@@ -104,8 +143,24 @@ export const insertDailyAudioSchema = createInsertSchema(dailyAudios).omit({
 export const insertPartnerSchema = createInsertSchema(partners).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
   sunSign: true,
+  moonSign: true,
+  ascendantSign: true,
   compatibilityScore: true,
+  compatibilityBreakdown: true,
+  questionsAskedToday: true,
+  lastQuestionDate: true,
+});
+
+export const insertHeartRadarInsightSchema = createInsertSchema(heartRadarDailyInsights).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPartnerQuestionSchema = createInsertSchema(partnerQuestions).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertDiaryEntrySchema = createInsertSchema(diaryEntries).omit({
@@ -124,6 +179,10 @@ export type InsertDailyAudio = z.infer<typeof insertDailyAudioSchema>;
 export type DailyAudio = typeof dailyAudios.$inferSelect;
 export type InsertPartner = z.infer<typeof insertPartnerSchema>;
 export type Partner = typeof partners.$inferSelect;
+export type InsertHeartRadarInsight = z.infer<typeof insertHeartRadarInsightSchema>;
+export type HeartRadarDailyInsight = typeof heartRadarDailyInsights.$inferSelect;
+export type InsertPartnerQuestion = z.infer<typeof insertPartnerQuestionSchema>;
+export type PartnerQuestion = typeof partnerQuestions.$inferSelect;
 export type InsertDiaryEntry = z.infer<typeof insertDiaryEntrySchema>;
 export type DiaryEntry = typeof diaryEntries.$inferSelect;
 export type DailyQuestionCount = typeof dailyQuestionCounts.$inferSelect;

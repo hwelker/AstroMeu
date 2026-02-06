@@ -12,11 +12,11 @@ AstroMeu is a personalized astrological guidance web application built for Brazi
 - **BrazilStateCitySelector**: Reusable component with all 27 Brazilian states and top 10 cities per state, used in onboarding and RadarCoracao
 - **BottomNav**: Mobile bottom navigation component with dynamic tabs based on user plan (Essência: Chat+Profile, Conexão: +Radar, Plenitude: +Diário)
 - **Onboarding Improvements**: Profile photo upload (2MB limit, base64), state/city birth location selector, visual voice preference cards with gradient backgrounds, "Already have account?" login link, footer with terms/privacy links
+- **Radar do Coração (Full Redesign)**: Complete rewrite with 3-step partner registration (photo upload, astrological data, relationship briefing), 4-tab dashboard (Hoje with thermometer + insights, Compatibilidade with 5-category score breakdown, Previsão 7 dias with quality indicators, Chat/Perguntas with 3/day limit and streaming responses). New DB tables: heartRadarDailyInsights, partnerQuestions. Partners table expanded with relationshipType, howMet, relationshipDuration, currentMood, mainChallenge, partnerPersonality, loveLanguage fields. Mock data for insights/forecasts (OpenAI integration deferred). Error states for failed queries.
 - **RadarCoracao Updates**: Partner photo upload with same UX pattern, BrazilStateCitySelector for partner location
 - **Login Stub Endpoint**: POST /api/auth/login endpoint using email lookup (password hashing not yet implemented)
 - **Mapa Astral**: Natal chart display with sun, moon, ascendant signs, element badge, and planetary positions (mock data)
 - **Horóscopo do Dia**: Daily horoscope with general/love/career predictions, lucky numbers, intensity meter, and mood badges
-- **Radar do Coração**: Partner compatibility module with 0-100 score, 7-day forecast, and daily relationship alerts (Premium: Conexão+)
 - **Diário das Estrelas**: Emotional diary with mood tracking, AI responses, pattern detection (Premium: Plenitude only)
 - **Dashboard Navigation**: Restructured with 7 tabs (Chat, Horóscopo, Mapa, Radar, Diário, Perfil, Planos) + BottomNav for mobile
 - **Plan-based Gating**: Lock/unlock features based on subscription with upgrade prompts

@@ -1,0 +1,1143 @@
+# 🎯 PROMPT COMPLETO - RADAR DO CORAÇÃO
+
+## ⚠️ ATENÇÃO: Este é um prompt COMPLETO e DETALHADO para implementar o módulo "Radar do Coração"
+
+---
+
+# 💝 RADAR DO CORAÇÃO - IMPLEMENTAÇÃO COMPLETA
+
+Você precisa implementar o módulo "Radar do Coração" COMPLETO conforme especificações abaixo. Este é um módulo exclusivo para planos **Conexão** e **Plenitude**.
+
+---
+
+## 📊 ESTRUTURA DE DADOS
+
+### **TAREFA 1: Atualizar Schema do Parceiro**
+
+**Modificar:** `shared/schema.ts`
+
+Atualizar a tabela `partners`:
+
+```typescript
+export const partners = pgTable("partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Dados básicos
+  name: text("name").notNull(),
+  photoBase64: text("photo_base64"), // Foto do parceiro (obrigatória)
+  birthDate: date("birth_date").notNull(),
+  birthTime: text("birth_time"),
+  birthState: text("birth_state").notNull(),
+  birthCity: text("birth_city").notNull(),
+  
+  // Tipo de relacionamento
+  relationshipType: text("relationship_type").notNull(), // conjuge, namorado, crush, pretendente
+  
+  // Informações adicionais (briefing)
+  howMet: text("how_met"), // Como se conheceram
+  relationshipDuration: text("relationship_duration"), // Há quanto tempo se relacionam
+  currentMood: text("current_mood"), // Como está o relacionamento atualmente
+  mainChallenge: text("main_challenge"), // Maior desafio do relacionamento
+  partnerPersonality: text("partner_personality"), // Como é a personalidade do parceiro
+  loveLanguage: text("love_language"), // Linguagem do amor do parceiro
+  
+  // Dados astrológicos (calculados)
+  sunSign: text("sun_sign"),
+  moonSign: text("moon_sign"),
+  ascendantSign: text("ascendant_sign"),
+  
+  // Compatibilidade
+  compatibilityScore: integer("compatibility_score"), // 0-100
+  compatibilityBreakdown: text("compatibility_breakdown"), // JSON com detalhes
+  
+  // Contadores
+  questionsAskedToday: integer("questions_asked_today").default(0),
+  lastQuestionDate: date("last_question_date"),
+  
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Adicionar tabela de previsões diárias
+export const heartRadarDailyInsights = pgTable("heart_radar_daily_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").notNull().references(() => partners.id, { onDelete: "cascade" }),
+  
+  forDate: date("for_date").notNull(),
+  
+  // Termômetro do relacionamento
+  temperatureScore: integer("temperature_score").notNull(), // 0-100 (frio a quente)
+  temperatureLabel: text("temperature_label").notNull(), // "Gelado", "Morno", "Quente", "Fervendo"
+  
+  // Previsão do dia
+  dayQuality: text("day_quality").notNull(), // "excellent", "good", "neutral", "careful", "avoid"
+  mainMessage: text("main_message").notNull(), // Mensagem principal do dia
+  
+  // Orientações
+  favorableTopics: text("favorable_topics").notNull(), // JSON array
+  avoidTopics: text("avoid_topics").notNull(), // JSON array
+  bestTimeToTalk: text("best_time_to_talk"), // Ex: "à noite, após 20h"
+  
+  // Aspectos astrológicos do dia
+  astrologicalInfluences: text("astrological_influences"), // JSON com planetas/trânsitos
+  
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Adicionar tabela de perguntas sobre o parceiro
+export const partnerQuestions = pgTable("partner_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").notNull().references(() => partners.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+```
+
+---
+
+## 📝 FLUXO COMPLETO DO RADAR DO CORAÇÃO
+
+### **ESTADO 1: Sem parceiro cadastrado**
+→ Mostrar formulário de cadastro detalhado
+
+### **ESTADO 2: Parceiro cadastrado**
+→ Mostrar Dashboard do Radar com:
+- Termômetro do relacionamento
+- Previsão do dia
+- Score de compatibilidade
+- Chat de perguntas (3/dia)
+- Previsão dos próximos 7 dias
+
+---
+
+## 🎨 INTERFACE DO RADAR DO CORAÇÃO
+
+### **TAREFA 2: Criar Página Completa do Radar**
+
+**Criar/Substituir arquivo:** `client/src/pages/heart-radar.tsx`
+
+```typescript
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  Heart, Upload, Camera, TrendingUp, MessageCircle, 
+  Flame, Snowflake, ThermometerSun, Calendar, Sparkles,
+  CheckCircle2, XCircle, Clock, Info
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { BrazilStateCitySelector } from "@/components/BrazilStateCitySelector";
+import { ChatInput } from "@/components/ChatInput";
+import { ChatMessage } from "@/components/ChatMessage";
+
+type RelationshipType = "conjuge" | "namorado" | "crush" | "pretendente";
+
+interface PartnerFormData {
+  name: string;
+  photoBase64: string | null;
+  birthDate: string;
+  birthTime: string;
+  birthState: string;
+  birthCity: string;
+  relationshipType: RelationshipType;
+  howMet: string;
+  relationshipDuration: string;
+  currentMood: string;
+  mainChallenge: string;
+  partnerPersonality: string;
+  loveLanguage: string;
+}
+
+export default function HeartRadar() {
+  const userId = localStorage.getItem("userId");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Query para buscar parceiro
+  const { data: partner, isLoading } = useQuery({
+    queryKey: ["/api/users", userId, "partner"],
+    enabled: !!userId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Heart className="h-12 w-12 text-indigo-500 animate-pulse mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando Radar do Coração...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não tem parceiro, mostrar formulário
+  if (!partner) {
+    return <PartnerRegistrationForm />;
+  }
+
+  // Se tem parceiro, mostrar dashboard
+  return <RadarDashboard partner={partner} />;
+}
+
+// ============================================
+// COMPONENTE 1: FORMULÁRIO DE CADASTRO
+// ============================================
+
+function PartnerRegistrationForm() {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState<PartnerFormData>({
+    name: "",
+    photoBase64: null,
+    birthDate: "",
+    birthTime: "",
+    birthState: "",
+    birthCity: "",
+    relationshipType: "namorado",
+    howMet: "",
+    relationshipDuration: "",
+    currentMood: "",
+    mainChallenge: "",
+    partnerPersonality: "",
+    loveLanguage: "",
+  });
+
+  const userId = localStorage.getItem("userId");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const createPartner = useMutation({
+    mutationFn: async (data: PartnerFormData) => {
+      const response = await fetch(`/api/users/${userId}/partner`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Erro ao cadastrar parceiro");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "partner"] });
+      toast({
+        title: "Parceiro cadastrado! 💜",
+        description: "Estamos calculando a compatibilidade...",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao cadastrar",
+        description: "Tente novamente",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "Foto muito grande",
+          description: "A foto deve ter no máximo 2MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, photoBase64: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const canProceedStep1 = formData.name && formData.photoBase64 && formData.relationshipType;
+  const canProceedStep2 = formData.birthDate && formData.birthState && formData.birthCity;
+  const canSubmit = formData.howMet && formData.partnerPersonality;
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="text-center mb-8">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-indigo-500 flex items-center justify-center mx-auto mb-4">
+          <Heart className="h-10 w-10 text-white" />
+        </div>
+        <h1 className="text-3xl font-medium mb-2">Radar do Coração</h1>
+        <p className="text-muted-foreground">
+          Vamos conhecer melhor sobre seu relacionamento para oferecer orientações precisas
+        </p>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="flex justify-center gap-2 mb-8">
+        {[1, 2, 3].map((s) => (
+          <div
+            key={s}
+            className={`h-2 w-16 rounded-full transition-colors ${
+              s === step
+                ? "bg-indigo-500"
+                : s < step
+                ? "bg-indigo-200"
+                : "bg-muted"
+            }`}
+          />
+        ))}
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          {/* STEP 1: Dados básicos + Foto + Tipo */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <Heart className="h-8 w-8 text-pink-500 mx-auto mb-2" />
+                <h2 className="text-xl font-medium mb-1">Quem é essa pessoa especial?</h2>
+                <p className="text-sm text-muted-foreground">Vamos começar com o básico</p>
+              </div>
+
+              {/* Upload de Foto */}
+              <div className="flex flex-col items-center">
+                <div className="relative group">
+                  <Avatar className="w-32 h-32 border-4 border-pink-100">
+                    {formData.photoBase64 ? (
+                      <AvatarImage src={formData.photoBase64} alt="Foto do parceiro" />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-pink-100 to-indigo-100">
+                        <Camera className="h-12 w-12 text-pink-400" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                    <Upload className="h-8 w-8 text-white" />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
+                  </label>
+                </div>
+                
+                <p className="text-sm text-muted-foreground mt-3">
+                  {formData.photoBase64 ? "Clique para trocar a foto" : "Adicione uma foto (obrigatório)"}
+                </p>
+                <p className="text-xs text-muted-foreground">Máximo 2MB</p>
+              </div>
+
+              {/* Nome */}
+              <div>
+                <Label>Nome completo *</Label>
+                <Input 
+                  placeholder="Nome do(a) parceiro(a)"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+
+              {/* Tipo de Relacionamento */}
+              <div>
+                <Label className="mb-3 block">Tipo de relacionamento *</Label>
+                <RadioGroup
+                  value={formData.relationshipType}
+                  onValueChange={(value) => setFormData({ ...formData, relationshipType: value as RelationshipType })}
+                  className="grid grid-cols-2 gap-3"
+                >
+                  <Label
+                    htmlFor="conjuge"
+                    className="cursor-pointer"
+                  >
+                    <div className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                      formData.relationshipType === "conjuge"
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                        : "border-border hover:border-indigo-200"
+                    }`}>
+                      <RadioGroupItem value="conjuge" id="conjuge" />
+                      <div>
+                        <p className="font-medium">💍 Cônjuge</p>
+                        <p className="text-xs text-muted-foreground">Casado(a)</p>
+                      </div>
+                    </div>
+                  </Label>
+
+                  <Label htmlFor="namorado" className="cursor-pointer">
+                    <div className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                      formData.relationshipType === "namorado"
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                        : "border-border hover:border-indigo-200"
+                    }`}>
+                      <RadioGroupItem value="namorado" id="namorado" />
+                      <div>
+                        <p className="font-medium">❤️ Namorado(a)</p>
+                        <p className="text-xs text-muted-foreground">Namoro sério</p>
+                      </div>
+                    </div>
+                  </Label>
+
+                  <Label htmlFor="crush" className="cursor-pointer">
+                    <div className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                      formData.relationshipType === "crush"
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                        : "border-border hover:border-indigo-200"
+                    }`}>
+                      <RadioGroupItem value="crush" id="crush" />
+                      <div>
+                        <p className="font-medium">😍 Crush</p>
+                        <p className="text-xs text-muted-foreground">Paquera/Interesse</p>
+                      </div>
+                    </div>
+                  </Label>
+
+                  <Label htmlFor="pretendente" className="cursor-pointer">
+                    <div className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                      formData.relationshipType === "pretendente"
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                        : "border-border hover:border-indigo-200"
+                    }`}>
+                      <RadioGroupItem value="pretendente" id="pretendente" />
+                      <div>
+                        <p className="font-medium">🌹 Pretendente</p>
+                        <p className="text-xs text-muted-foreground">Conhecendo</p>
+                      </div>
+                    </div>
+                  </Label>
+                </RadioGroup>
+              </div>
+
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={() => setStep(2)}
+                disabled={!canProceedStep1}
+              >
+                Continuar
+              </Button>
+            </div>
+          )}
+
+          {/* STEP 2: Dados astrológicos */}
+          {step === 2 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <Sparkles className="h-8 w-8 text-indigo-500 mx-auto mb-2" />
+                <h2 className="text-xl font-medium mb-1">Dados astrológicos</h2>
+                <p className="text-sm text-muted-foreground">
+                  Precisamos disso para calcular a compatibilidade
+                </p>
+              </div>
+
+              <div>
+                <Label>Data de nascimento *</Label>
+                <Input 
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Hora de nascimento</Label>
+                <Input 
+                  type="time"
+                  value={formData.birthTime}
+                  onChange={(e) => setFormData({ ...formData, birthTime: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Opcional, mas melhora a precisão
+                </p>
+              </div>
+
+              <BrazilStateCitySelector
+                onStateChange={(state) => setFormData({ ...formData, birthState: state })}
+                onCityChange={(city) => setFormData({ ...formData, birthCity: city })}
+                selectedState={formData.birthState}
+                selectedCity={formData.birthCity}
+                label="Local de nascimento"
+              />
+
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setStep(1)}
+                >
+                  Voltar
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={() => setStep(3)}
+                  disabled={!canProceedStep2}
+                >
+                  Continuar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Briefing detalhado */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <MessageCircle className="h-8 w-8 text-indigo-500 mx-auto mb-2" />
+                <h2 className="text-xl font-medium mb-1">Conte-nos mais sobre o relacionamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  Quanto mais detalhes, melhores serão nossas orientações
+                </p>
+              </div>
+
+              <div>
+                <Label>Como vocês se conheceram? *</Label>
+                <Textarea 
+                  placeholder="Ex: Nos conhecemos no trabalho, começamos como amigos..."
+                  rows={3}
+                  value={formData.howMet}
+                  onChange={(e) => setFormData({ ...formData, howMet: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Há quanto tempo estão juntos?</Label>
+                <Input 
+                  placeholder="Ex: 2 anos, 6 meses, Ainda não estamos juntos..."
+                  value={formData.relationshipDuration}
+                  onChange={(e) => setFormData({ ...formData, relationshipDuration: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Como está o relacionamento atualmente?</Label>
+                <Textarea 
+                  placeholder="Ex: Está tudo bem, mas às vezes brigamos por bobeira..."
+                  rows={3}
+                  value={formData.currentMood}
+                  onChange={(e) => setFormData({ ...formData, currentMood: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Qual o maior desafio do relacionamento?</Label>
+                <Input 
+                  placeholder="Ex: Falta de comunicação, ciúmes, distância..."
+                  value={formData.mainChallenge}
+                  onChange={(e) => setFormData({ ...formData, mainChallenge: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Como é a personalidade do(a) {formData.name}? *</Label>
+                <Textarea 
+                  placeholder="Ex: É uma pessoa calma, introvertida, gosta de estar em casa..."
+                  rows={3}
+                  value={formData.partnerPersonality}
+                  onChange={(e) => setFormData({ ...formData, partnerPersonality: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Qual a linguagem do amor do(a) {formData.name}?</Label>
+                <Input 
+                  placeholder="Ex: Palavras de afirmação, tempo de qualidade, presentes..."
+                  value={formData.loveLanguage}
+                  onChange={(e) => setFormData({ ...formData, loveLanguage: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Se não sabe, deixe em branco
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setStep(2)}
+                >
+                  Voltar
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={() => createPartner.mutate(formData)}
+                  disabled={!canSubmit || createPartner.isPending}
+                >
+                  {createPartner.isPending ? "Calculando..." : "Finalizar Cadastro"}
+                  <Sparkles className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================
+// COMPONENTE 2: DASHBOARD DO RADAR
+// ============================================
+
+function RadarDashboard({ partner }: { partner: any }) {
+  const userId = localStorage.getItem("userId");
+  
+  // Query para insight do dia
+  const { data: todayInsight } = useQuery({
+    queryKey: ["/api/partner", partner.id, "insight/today"],
+  });
+
+  // Query para previsão 7 dias
+  const { data: forecast7Days } = useQuery({
+    queryKey: ["/api/partner", partner.id, "forecast"],
+  });
+
+  // Query para perguntas do parceiro
+  const { data: partnerQuestions = [] } = useQuery({
+    queryKey: ["/api/partner", partner.id, "questions"],
+  });
+
+  // DADOS MOCKADOS (enquanto backend não estiver pronto)
+  const mockInsight = {
+    temperatureScore: 75,
+    temperatureLabel: "Quente",
+    dayQuality: "good",
+    mainMessage: "Hoje é um bom dia para conversas profundas. Vênus está favorável!",
+    favorableTopics: ["planos futuros", "demonstrações de carinho", "viagens"],
+    avoidTopics: ["dinheiro", "ex-relacionamentos", "críticas"],
+    bestTimeToTalk: "à noite, após 20h",
+    astrologicalInfluences: {
+      mainPlanet: "Vênus",
+      aspect: "Trígono com sua Lua",
+      effect: "Favorece romantismo e compreensão"
+    }
+  };
+
+  const mockCompatibility = {
+    overall: 85,
+    breakdown: {
+      communication: 90,
+      intimacy: 82,
+      conflicts: 75,
+      goals: 88,
+      values: 85
+    }
+  };
+
+  const mock7DaysForecast = [
+    { 
+      date: "Hoje", 
+      quality: "good", 
+      temperature: 75,
+      message: "Bom dia para conexão emocional",
+      icon: "☀️"
+    },
+    { 
+      date: "Amanhã", 
+      quality: "neutral", 
+      temperature: 60,
+      message: "Dia neutro, mantenha a calma",
+      icon: "⛅"
+    },
+    { 
+      date: "Sexta", 
+      quality: "excellent", 
+      temperature: 90,
+      message: "Dia perfeito para romance!",
+      icon: "🔥"
+    },
+    { 
+      date: "Sábado", 
+      quality: "good", 
+      temperature: 78,
+      message: "Ótimo para fazer planos juntos",
+      icon: "☀️"
+    },
+    { 
+      date: "Domingo", 
+      quality: "careful", 
+      temperature: 45,
+      message: "Evite discussões sérias",
+      icon: "⚠️"
+    },
+    { 
+      date: "Segunda", 
+      quality: "neutral", 
+      temperature: 55,
+      message: "Dia comum, sem grandes emoções",
+      icon: "⛅"
+    },
+    { 
+      date: "Terça", 
+      quality: "good", 
+      temperature: 70,
+      message: "Bom para resolver pendências",
+      icon: "☀️"
+    },
+  ];
+
+  const relationshipTypeLabel = {
+    conjuge: "Cônjuge",
+    namorado: "Namorado(a)",
+    crush: "Crush",
+    pretendente: "Pretendente"
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {/* Header com foto e info do parceiro */}
+      <Card className="border-2 border-pink-100">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <Avatar className="w-20 h-20 border-4 border-pink-200">
+              {partner.photoBase64 ? (
+                <AvatarImage src={partner.photoBase64} alt={partner.name} />
+              ) : (
+                <AvatarFallback>
+                  <Heart className="h-10 w-10 text-pink-400" />
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-2xl font-medium">{partner.name}</h2>
+                <Badge variant="secondary">
+                  {relationshipTypeLabel[partner.relationshipType as RelationshipType]}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground">
+                {partner.sunSign} • {new Date(partner.birthDate).toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-indigo-600">{mockCompatibility.overall}%</div>
+              <p className="text-sm text-muted-foreground">Compatibilidade</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="today" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="today">Hoje</TabsTrigger>
+          <TabsTrigger value="compatibility">Compatibilidade</TabsTrigger>
+          <TabsTrigger value="forecast">Previsão 7 dias</TabsTrigger>
+          <TabsTrigger value="chat">Perguntas (3/dia)</TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: Previsão de Hoje + Termômetro */}
+        <TabsContent value="today" className="space-y-6">
+          {/* Termômetro do relacionamento */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ThermometerSun className="h-5 w-5 text-orange-500" />
+                Termômetro do Relacionamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 mb-3">
+                  <Flame className="h-12 w-12 text-white" />
+                </div>
+                <h3 className="text-3xl font-bold">{mockInsight.temperatureLabel}</h3>
+                <p className="text-muted-foreground">Temperatura atual: {mockInsight.temperatureScore}°</p>
+              </div>
+
+              <Progress 
+                value={mockInsight.temperatureScore} 
+                className="h-4 mb-2"
+                style={{
+                  background: `linear-gradient(to right, 
+                    #3b82f6 0%, 
+                    #10b981 25%, 
+                    #f59e0b 50%, 
+                    #ef4444 75%, 
+                    #dc2626 100%)`
+                }}
+              />
+
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>❄️ Gelado</span>
+                <span>🌡️ Morno</span>
+                <span>🔥 Quente</span>
+                <span>💥 Fervendo</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Previsão do dia */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-indigo-500" />
+                Previsão para Hoje
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg">
+                <p className="font-medium mb-2 flex items-center gap-2">
+                  ✨ Mensagem do dia
+                </p>
+                <p className="text-sm">{mockInsight.mainMessage}</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg">
+                  <p className="font-medium mb-2 flex items-center gap-2 text-green-700 dark:text-green-300">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Assuntos favoráveis
+                  </p>
+                  <ul className="space-y-1">
+                    {mockInsight.favorableTopics.map((topic, i) => (
+                      <li key={i} className="text-sm">• {topic}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-red-50 dark:bg-red-950/30 p-4 rounded-lg">
+                  <p className="font-medium mb-2 flex items-center gap-2 text-red-700 dark:text-red-300">
+                    <XCircle className="h-4 w-4" />
+                    Evite falar sobre
+                  </p>
+                  <ul className="space-y-1">
+                    {mockInsight.avoidTopics.map((topic, i) => (
+                      <li key={i} className="text-sm">• {topic}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 dark:bg-purple-950/30 p-4 rounded-lg">
+                <p className="font-medium mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Melhor horário para conversar
+                </p>
+                <p className="text-sm">{mockInsight.bestTimeToTalk}</p>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg">
+                <p className="font-medium mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Influência Astrológica
+                </p>
+                <p className="text-sm">
+                  <strong>{mockInsight.astrologicalInfluences.mainPlanet}:</strong>{" "}
+                  {mockInsight.astrologicalInfluences.aspect} - {mockInsight.astrologicalInfluences.effect}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 2: Compatibilidade Detalhada */}
+        <TabsContent value="compatibility" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Análise de Compatibilidade</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <div className="text-6xl font-bold text-indigo-600 mb-2">
+                  {mockCompatibility.overall}%
+                </div>
+                <p className="text-muted-foreground">Compatibilidade Geral</p>
+                <Progress value={mockCompatibility.overall} className="h-3 mt-4" />
+              </div>
+
+              <Separator />
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {Object.entries(mockCompatibility.breakdown).map(([key, value]) => {
+                  const labels: Record<string, string> = {
+                    communication: "Comunicação",
+                    intimacy: "Intimidade",
+                    conflicts: "Gestão de Conflitos",
+                    goals: "Objetivos em Comum",
+                    values: "Valores Compartilhados"
+                  };
+
+                  const icons: Record<string, any> = {
+                    communication: MessageCircle,
+                    intimacy: Heart,
+                    conflicts: TrendingUp,
+                    goals: Target,
+                    values: Users
+                  };
+
+                  const Icon = icons[key];
+
+                  return (
+                    <Card key={key}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Icon className="h-5 w-5 text-indigo-500" />
+                          {labels[key]}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-semibold mb-2">{value}%</div>
+                        <Progress value={value} className="h-2" />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 3: Previsão 7 Dias */}
+        <TabsContent value="forecast" className="space-y-3">
+          {mock7DaysForecast.map((day, i) => {
+            const qualityColors = {
+              excellent: "border-green-200 bg-green-50",
+              good: "border-blue-200 bg-blue-50",
+              neutral: "border-gray-200 bg-gray-50",
+              careful: "border-orange-200 bg-orange-50",
+              avoid: "border-red-200 bg-red-50"
+            };
+
+            return (
+              <Card key={i} className={qualityColors[day.quality as keyof typeof qualityColors]}>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl">{day.icon}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium">{day.date}</h3>
+                        <Badge variant="secondary">{day.temperature}°</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{day.message}</p>
+                    </div>
+                    <div className="text-right">
+                      <Progress value={day.temperature} className="h-2 w-24" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
+        {/* TAB 4: Chat de Perguntas sobre o Parceiro */}
+        <TabsContent value="chat">
+          <PartnerChat partnerId={partner.id} partnerName={partner.name} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ============================================
+// COMPONENTE 3: CHAT DE PERGUNTAS SOBRE PARCEIRO
+// ============================================
+
+function PartnerChat({ partnerId, partnerName }: { partnerId: string; partnerName: string }) {
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const userId = localStorage.getItem("userId");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: questions = [] } = useQuery({
+    queryKey: ["/api/partner", partnerId, "questions"],
+  });
+
+  const { data: questionCount = 0 } = useQuery({
+    queryKey: ["/api/partner", partnerId, "questions/count"],
+  });
+
+  const remainingQuestions = 3 - questionCount;
+
+  const handleSendQuestion = async (content: string) => {
+    if (remainingQuestions <= 0) {
+      toast({
+        title: "Limite atingido",
+        description: "Você já fez 3 perguntas hoje sobre seu parceiro",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsStreaming(true);
+    setStreamingContent("");
+
+    try {
+      const response = await fetch(`/api/partner/${partnerId}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: content }),
+      });
+
+      if (!response.ok) throw new Error("Erro ao enviar pergunta");
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let fullContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.content) {
+              fullContent += data.content;
+              setStreamingContent(fullContent);
+            }
+            if (data.done) {
+              setIsStreaming(false);
+              setStreamingContent("");
+              queryClient.invalidateQueries({ queryKey: ["/api/partner", partnerId, "questions"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/partner", partnerId, "questions/count"] });
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
+    } catch (error: any) {
+      setIsStreaming(false);
+      setStreamingContent("");
+      toast({
+        title: "Erro ao enviar pergunta",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-indigo-500" />
+            Perguntas sobre {partnerName}
+          </CardTitle>
+          <Badge variant={remainingQuestions > 0 ? "default" : "destructive"}>
+            {remainingQuestions}/3 perguntas hoje
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[400px] mb-4">
+          <div className="space-y-4">
+            {questions.length === 0 && !isStreaming ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Heart className="h-12 w-12 mx-auto mb-3 text-pink-300" />
+                <p>Faça perguntas sobre seu relacionamento com {partnerName}</p>
+                <p className="text-sm mt-1">Você tem 3 perguntas por dia</p>
+              </div>
+            ) : (
+              <>
+                {questions.map((q: any) => (
+                  <div key={q.id}>
+                    <ChatMessage
+                      role="user"
+                      content={q.question}
+                      timestamp={new Date(q.createdAt)}
+                    />
+                    <ChatMessage
+                      role="assistant"
+                      content={q.answer}
+                      timestamp={new Date(q.createdAt)}
+                    />
+                  </div>
+                ))}
+                {isStreaming && streamingContent && (
+                  <ChatMessage
+                    role="assistant"
+                    content={streamingContent}
+                  />
+                )}
+                {isStreaming && !streamingContent && (
+                  <ChatMessage
+                    role="assistant"
+                    content=""
+                    isLoading
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </ScrollArea>
+
+        <ChatInput
+          onSend={handleSendQuestion}
+          disabled={isStreaming || remainingQuestions <= 0}
+          remainingQuestions={remainingQuestions}
+          maxQuestions={3}
+          placeholder={`Pergunte sobre seu relacionamento com ${partnerName}...`}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+---
+
+## 🎯 RESUMO DAS FUNCIONALIDADES IMPLEMENTADAS:
+
+✅ Formulário de cadastro do parceiro (3 etapas)  
+✅ Upload de foto obrigatório  
+✅ Tipo de relacionamento (cônjuge, namorado, crush, pretendente)  
+✅ Briefing detalhado (7 perguntas sobre o relacionamento)  
+✅ Seletor de estado/cidade  
+✅ Termômetro do relacionamento (visual dinâmico)  
+✅ Previsão do dia (assuntos favoráveis/evitar + melhor horário)  
+✅ Score de compatibilidade (geral + breakdown)  
+✅ Previsão 7 dias com ícones e cores  
+✅ Chat de perguntas sobre o parceiro (3/dia)  
+✅ Sistema de quotas de perguntas  
+✅ Tabs organizadas (Hoje, Compatibilidade, Previsão, Chat)  
+
+---
+
+## ✅ CHECKLIST DE VALIDAÇÃO:
+
+**Cadastro:**
+- [ ] Consigo fazer upload de foto do parceiro
+- [ ] Foto é obrigatória e não deixa avançar sem ela
+- [ ] Consigo selecionar tipo de relacionamento
+- [ ] Consigo preencher briefing completo
+- [ ] Formulário tem 3 steps funcionais
+
+**Dashboard:**
+- [ ] Vejo termômetro do relacionamento
+- [ ] Termômetro mostra temperatura visual (gradiente)
+- [ ] Vejo previsão do dia completa
+- [ ] Vejo assuntos favoráveis e a evitar
+- [ ] Vejo score de compatibilidade geral
+- [ ] Vejo breakdown por categoria
+- [ ] Vejo previsão dos próximos 7 dias
+
+**Chat:**
+- [ ] Consigo fazer perguntas sobre o parceiro
+- [ ] Badge mostra "X/3 perguntas"
+- [ ] Após 3 perguntas, não consigo enviar mais
+- [ ] Perguntas aparecem no histórico
+
+---
+
+Cole este prompt no Replit para implementar o Radar do Coração COMPLETO! 🚀💜
+

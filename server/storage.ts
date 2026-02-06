@@ -7,6 +7,8 @@ import {
   dailyQuestionCounts,
   partners,
   diaryEntries,
+  heartRadarDailyInsights,
+  partnerQuestions,
   getZodiacSign,
   type User,
   type InsertUser,
@@ -19,6 +21,10 @@ import {
   type DiaryEntry,
   type InsertDiaryEntry,
   type DailyQuestionCount,
+  type HeartRadarDailyInsight,
+  type InsertHeartRadarInsight,
+  type PartnerQuestion,
+  type InsertPartnerQuestion,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -44,8 +50,19 @@ export interface IStorage {
 
   // Partners
   getPartnerByUser(userId: string): Promise<Partner | undefined>;
+  getPartnersByUser(userId: string): Promise<Partner[]>;
   createPartner(partner: InsertPartner): Promise<Partner>;
   updatePartner(id: string, updates: Partial<Partner>): Promise<Partner | undefined>;
+
+  // Heart Radar Daily Insights
+  getTodayInsight(partnerId: string): Promise<HeartRadarDailyInsight | undefined>;
+  createInsight(insight: InsertHeartRadarInsight): Promise<HeartRadarDailyInsight>;
+  getRecentInsights(partnerId: string, limit?: number): Promise<HeartRadarDailyInsight[]>;
+
+  // Partner Questions
+  getPartnerQuestions(partnerId: string, limit?: number): Promise<PartnerQuestion[]>;
+  createPartnerQuestion(question: InsertPartnerQuestion): Promise<PartnerQuestion>;
+  getTodayPartnerQuestionCount(partnerId: string): Promise<number>;
 
   // Diary Entries
   getDiaryEntriesByUser(userId: string, limit?: number): Promise<DiaryEntry[]>;
@@ -162,6 +179,10 @@ class DatabaseStorage implements IStorage {
     return partner;
   }
 
+  async getPartnersByUser(userId: string): Promise<Partner[]> {
+    return db.select().from(partners).where(eq(partners.userId, userId));
+  }
+
   async createPartner(partner: InsertPartner): Promise<Partner> {
     const sunSign = getZodiacSign(partner.birthDate);
     const [newPartner] = await db
@@ -177,6 +198,54 @@ class DatabaseStorage implements IStorage {
   async updatePartner(id: string, updates: Partial<Partner>): Promise<Partner | undefined> {
     const [partner] = await db.update(partners).set(updates).where(eq(partners.id, id)).returning();
     return partner;
+  }
+
+  // Heart Radar Daily Insights
+  async getTodayInsight(partnerId: string): Promise<HeartRadarDailyInsight | undefined> {
+    const today = new Date().toISOString().split("T")[0];
+    const [insight] = await db
+      .select()
+      .from(heartRadarDailyInsights)
+      .where(and(eq(heartRadarDailyInsights.partnerId, partnerId), eq(heartRadarDailyInsights.forDate, today)));
+    return insight;
+  }
+
+  async createInsight(insight: InsertHeartRadarInsight): Promise<HeartRadarDailyInsight> {
+    const [newInsight] = await db.insert(heartRadarDailyInsights).values(insight).returning();
+    return newInsight;
+  }
+
+  async getRecentInsights(partnerId: string, limit = 7): Promise<HeartRadarDailyInsight[]> {
+    return db
+      .select()
+      .from(heartRadarDailyInsights)
+      .where(eq(heartRadarDailyInsights.partnerId, partnerId))
+      .orderBy(desc(heartRadarDailyInsights.forDate))
+      .limit(limit);
+  }
+
+  // Partner Questions
+  async getPartnerQuestions(partnerId: string, limit = 50): Promise<PartnerQuestion[]> {
+    return db
+      .select()
+      .from(partnerQuestions)
+      .where(eq(partnerQuestions.partnerId, partnerId))
+      .orderBy(partnerQuestions.createdAt)
+      .limit(limit);
+  }
+
+  async createPartnerQuestion(question: InsertPartnerQuestion): Promise<PartnerQuestion> {
+    const [newQuestion] = await db.insert(partnerQuestions).values(question).returning();
+    return newQuestion;
+  }
+
+  async getTodayPartnerQuestionCount(partnerId: string): Promise<number> {
+    const today = new Date().toISOString().split("T")[0];
+    const allQuestions = await db
+      .select()
+      .from(partnerQuestions)
+      .where(eq(partnerQuestions.partnerId, partnerId));
+    return allQuestions.filter((q) => q.createdAt.toISOString().split("T")[0] === today).length;
   }
 
   // Diary Entries
