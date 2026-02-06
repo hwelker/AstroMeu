@@ -324,8 +324,8 @@ function PartnerRegistrationForm() {
               </div>
 
               <BrazilStateCitySelector
-                onStateChange={(state) => setFormData({ ...formData, birthState: state })}
-                onCityChange={(city) => setFormData({ ...formData, birthCity: city })}
+                onStateChange={(state) => setFormData(prev => ({ ...prev, birthState: state }))}
+                onCityChange={(city) => setFormData(prev => ({ ...prev, birthCity: city }))}
                 selectedState={formData.birthState}
                 selectedCity={formData.birthCity}
                 label="Local de nascimento"

@@ -50,22 +50,20 @@ const stateCodeMap: Record<string, number> = {
 export function BrazilStateCitySelector({
   onStateChange,
   onCityChange,
-  selectedState,
-  selectedCity,
+  selectedState = "",
+  selectedCity = "",
   label = "Local de nascimento"
 }: StateCitySelectorProps) {
-  const [state, setState] = useState(selectedState || "");
-  const [city, setCity] = useState(selectedCity || "");
   const [cities, setCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
 
   useEffect(() => {
-    if (!state) {
+    if (!selectedState) {
       setCities([]);
       return;
     }
 
-    const code = stateCodeMap[state];
+    const code = stateCodeMap[selectedState];
     if (!code) return;
 
     setLoadingCities(true);
@@ -80,25 +78,18 @@ export function BrazilStateCitySelector({
       .finally(() => {
         setLoadingCities(false);
       });
-  }, [state]);
+  }, [selectedState]);
 
   const handleStateChange = (newState: string) => {
-    setState(newState);
-    setCity("");
     onStateChange(newState);
     onCityChange("");
-  };
-
-  const handleCityChange = (newCity: string) => {
-    setCity(newCity);
-    onCityChange(newCity);
   };
 
   return (
     <div className="space-y-3">
       <div>
         <Label>{label} - Estado</Label>
-        <Select value={state} onValueChange={handleStateChange}>
+        <Select value={selectedState} onValueChange={handleStateChange}>
           <SelectTrigger data-testid="select-state">
             <SelectValue placeholder="Selecione o estado" />
           </SelectTrigger>
@@ -112,10 +103,10 @@ export function BrazilStateCitySelector({
         </Select>
       </div>
 
-      {state && (
+      {selectedState && (
         <div>
           <Label>Cidade</Label>
-          <Select value={city} onValueChange={handleCityChange} disabled={!state || loadingCities}>
+          <Select value={selectedCity} onValueChange={onCityChange} disabled={!selectedState || loadingCities}>
             <SelectTrigger data-testid="select-city">
               <SelectValue placeholder={loadingCities ? "Carregando cidades..." : "Selecione a cidade"} />
             </SelectTrigger>
