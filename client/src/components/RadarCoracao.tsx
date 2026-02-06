@@ -170,7 +170,7 @@ function PartnerRegistrationForm() {
     }
   };
 
-  const canProceedStep1 = formData.name && formData.photoBase64 && formData.relationshipType;
+  const canProceedStep1 = formData.name && formData.relationshipType;
   const canProceedStep2 = formData.birthDate && formData.birthState && formData.birthCity;
   const canSubmit = formData.howMet && formData.partnerPersonality;
 
@@ -241,7 +241,7 @@ function PartnerRegistrationForm() {
                   </label>
                 </div>
                 <p className="text-sm text-muted-foreground mt-3">
-                  {formData.photoBase64 ? "Clique para trocar a foto" : "Adicione uma foto (obrigatório)"}
+                  {formData.photoBase64 ? "Clique para trocar a foto" : "Adicione uma foto (opcional)"}
                 </p>
                 <p className="text-xs text-muted-foreground">Máximo 2MB</p>
               </div>
@@ -445,7 +445,7 @@ function RadarDashboard({ partner }: { partner: any }) {
     queryKey: ["/api/partner", partner.id, "forecast"],
   });
 
-  const safeArray = (val: any): string[] => {
+  const safeArray = (val: unknown): string[] => {
     if (Array.isArray(val)) return val;
     if (typeof val === "string") {
       try { return JSON.parse(val); } catch { return []; }
@@ -453,7 +453,7 @@ function RadarDashboard({ partner }: { partner: any }) {
     return [];
   };
 
-  const rawInsight = todayInsight || {
+  const rawInsight = (todayInsight || {
     temperatureScore: 75,
     temperatureLabel: "Quente",
     dayQuality: "good",
@@ -466,6 +466,15 @@ function RadarDashboard({ partner }: { partner: any }) {
       aspect: "Trígono com sua Lua",
       effect: "Favorece romantismo e compreensão",
     },
+  }) as {
+    temperatureScore: number;
+    temperatureLabel: string;
+    dayQuality: string;
+    mainMessage: string;
+    favorableTopics: string[] | string;
+    avoidTopics: string[] | string;
+    bestTimeToTalk: string;
+    astrologicalInfluences: { mainPlanet: string; aspect: string; effect: string } | null;
   };
 
   const insight = {
